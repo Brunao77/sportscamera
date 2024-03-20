@@ -1,0 +1,70 @@
+---
+import { ViewTransitions } from "astro:transitions";
+
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="es">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="description" content="Astro description" />
+		<meta name="viewport" content="width=device-width" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="generator" content={Astro.generator} />
+		<title>{title}</title>
+		<ViewTransitions />
+	</head>
+	<body class="overflow-hidden relative">
+		<div class="w-screen h-screen md:flex md:items-center md:justify-center">
+			<main class=`z-10 h-full md:h-auto flex md:flex-row flex-col-reverse md:rounded-xl`>
+				<slot />
+			</main>
+		</div>
+		<style is:global>
+			:root {
+				--color-primary: #9F4AA0;
+				--color-secondary: #E3F7FA;
+				--color-terciary: #969696;
+				--color-white: #fff;
+				--color-accent-rgb: 213, 255, 0;
+
+				--background-color: #E3F7FA;
+				--background-twitch: var(--color-twitch-ice);
+
+				--color-twitch: #9146ff;
+				--color-twitch-ice: #f0f0ff;
+			}
+			html {
+				font-family: "Ubuntu", system-ui, sans-serif;
+				background: var(--background-color);
+			}
+			@supports selector(::-webkit-scrollbar) {
+				::-webkit-scrollbar {
+					width: 10px;
+					border-radius: 10px;
+				}
+
+				::-webkit-scrollbar-thumb {
+					border-radius: 10px;
+					background-color: theme("colors.primary");
+					border: 2px solid transparent;
+					background-clip: content-box;
+				}
+
+				::-webkit-scrollbar-thumb:active {
+					background-color: #666;
+				}
+
+				::-webkit-scrollbar-track {
+					background: var(--background-image);
+				}
+
+				::-webkit-scrollbar-corner {
+					background: var(--background-image);
+				}
+			}
+		</style>
+	</body>
+</html>
+

@@ -1,0 +1,41 @@
+---
+const {placeholder, options, disabled, id} = Astro.props
+let selectOptions = options || [];
+---
+
+<div>
+    <slot />
+    <select bind:value={selectOptions} disabled={disabled} id={id}>
+        <option hidden>{placeholder}</option>
+        {options && options.map(({value, text})=>{
+            return <option value={value}>{text}</option>
+        })}
+    </select>
+</div>
+
+<style>
+    div{
+        width: 100%;
+		position: relative;
+	}
+	select{
+        appearance: none;
+        width: 100%;
+        font-size: 1.15rem;
+		background-color: #d2f7fd;
+		border: none;
+		height: 40px;
+		outline: none;
+		padding: 10px 40px;
+		color: #969696;
+		border-radius: 10px;
+        cursor: pointer;
+	}
+    option{
+        padding: 5px;
+    }
+    option:hover{
+        background: #ff4141;
+    }
+    
+</style>

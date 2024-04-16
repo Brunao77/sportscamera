@@ -13,7 +13,21 @@ import { CameraModel } from "./models/camera.js";
 const app = express();
 const PORT = 3000;
 
-app.use(cors());
+const allowedOrigins = ["http://localhost:4321"];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Permite solicitudes que tienen un origen en la lista de origins permitidos
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true, // Permite el uso de credenciales (cookies)
+  })
+);
 app.use(cookieParser());
 app.use(express.json());
 

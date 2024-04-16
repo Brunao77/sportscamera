@@ -13,7 +13,6 @@ export class UserController {
       return res.status(400).json({ error: "Los campos son requeridos" });
 
     const user = await this.userModel.findWithEmail({ email });
-    console.log(user);
 
     if (!user)
       return res.status(401).json({ error: "Credenciales incorrectas" });
@@ -34,9 +33,9 @@ export class UserController {
       .setIssuedAt()
       .sign(encoder.encode(process.env.JWT_PRIVATE_KEY));
 
-    res.cookie("jwt", jwt, { httpOnly: true });
-
-    return res.send({ message: "Inicio de sesión exitoso." });
+    return res
+      .cookie("jwt", jwt, { httpOnly })
+      .send({ message: "Inicio de sesión exitoso." });
   };
 
   signup = async (req, res) => {

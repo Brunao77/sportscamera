@@ -10,9 +10,16 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/preact": "^3.1.1",
+    "@astrojs/preact": "^3.2.0",
     "@astrojs/tailwind": "^5.1.0",
-    "astro": "^4.4.1",
+    "@lucia-auth/adapter-postgresql": "^3.1.2",
+    "astro": "^4.6.1",
+    "bcrypt": "^5.1.1",
+    "lucia": "^3.1.1",
+    "pg": "^8.11.5",
     "tailwindcss": "^3.4.1"
+  },
+  "devDependencies": {
+    "postcss-nesting": "^12.1.1"
   }
 }

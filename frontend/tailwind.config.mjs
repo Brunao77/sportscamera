@@ -9,8 +9,8 @@ export default {
         secondary: "var(--color-secondary)",
         terciary: "var(--color-terciary)",
         white: "var(--color-white)",
-        twitch: "var(--color-twitch)",
         ice: "var(--color-twitch-ice)",
+        primary_disabled: "var(--color-primary-disabled)",
       },
       screens: {
         xs: "360px",

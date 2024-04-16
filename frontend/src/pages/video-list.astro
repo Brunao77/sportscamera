@@ -1,6 +1,21 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import FormSearchVideoUser from '../components/FormSearchVideoUser.jsx'
+import { VideosModel } from '../models/videos';
+import VideoList from '../components/VideoList.jsx';
+
+const user = Astro.locals.user;
+if (!user) {
+	return Astro.redirect("/sign-in");
+}
+
+const { establishment_id } = user
+
+if (!establishment_id)
+      return Astro.redirect("/sign-in");
+
+const videos = await VideosModel.getAll({ establishment_id });
+
 ---
 
 <Layout title="SportsCamera!">
@@ -38,43 +53,20 @@ import FormSearchVideoUser from '../components/FormSearchVideoUser.jsx'
             <span>Nombre_establecimiento</span>
         </div>
 	</aside>
-	<section class="search_video grid bg-white h-full w-full md:rounded-r-xl md:gap-x-10 md:gap-y-5  px-5  text-center">
+	<section class="search_video grid bg-white h-full w-full md:rounded-r-xl md:gap-x-10 md:gap-y-5 px-5 text-center">
 		<strong class="font-medium text-xl md:text-3xl text-primary text-nowrap">Videos del establecimiento</strong>
-        <section class="video_list">
-            <div class="flex">
-                <span>Ordenar por</span>
-                <select class="outline-none">
-                    <option>Mas reciente</option>
-                    <option>Mas antiguo</option>
-                </select>
-            </div>
-            <div class="overflow-scroll max-h-[50vh] md:max-h-[70vh] md:w-[400px]">
-                {
-                    ['','','','','','','','','',''].map(()=>{
-                        return (
-                            <div class="flex items-center">
-                                <svg width="60" height="60" viewBox="0 0 24 24" stroke-width="1.5" stroke="#969696" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 4m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z" /><path d="M10 4l4 16" /><path d="M12 12l-8 2" />
-                                </svg>
-                                <div class="flex flex-col">
-                                    <strong class="text-start text-xl text-primary font-medium">Title</strong>
-                                    <div class="flex gap-4 text-terciary text-wrap">
-                                        <span class="md:text-nowrap text-xs md:text-l">cancha 1</span>
-                                        <span class="md:text-nowrap text-xs md:text-l">dd/mm/aaaa</span>
-                                        <span class="md:text-nowrap text-xs md:text-l">hh:mm a hh:mm</span>
-                                    </div>
-                                </div>
-                            </div>)
-                    })
-                }
-            </div>
+        <section class="video_list w-full">
+            <VideoList videos={videos} client:visible />
         </section>
-        <section class="filter flex flex-col gap-2">
+        <section class="filter flex flex-col gap-2 w-full">
             <strong class="text-start text-xl text-primary font-medium text-nowrap">Buscar video</strong>
-            <FormSearchVideoUser />
+            <FormSearchVideoUser establishment_id={establishment_id}  client:visible />
         </section>
 	</section>
 </Layout>
+<script>
+    
+</script>
 <style>
 	.search_video{
         grid-template-areas: 
@@ -84,6 +76,7 @@ import FormSearchVideoUser from '../components/FormSearchVideoUser.jsx'
             grid-area: title;
 		}
         & .video_list{
+
             grid-area: video-list;
         }
 
@@ -100,3 +93,4 @@ import FormSearchVideoUser from '../components/FormSearchVideoUser.jsx'
         }
     }
 </style>
+../components/Modal.jsx/index.js

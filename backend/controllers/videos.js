@@ -18,21 +18,11 @@ export class VideosController {
         .status(400)
         .send({ error: "No hay establecimientos relacionados" });
 
-    const cameras = await this.cameraModel.getAll({
-      establishment_id,
-    });
-
-    const videos = await Promise.all(
-      cameras.map(async ({ camera_id }) => {
-        return await this.videosModel.getAll({ camera_id });
-      })
-    );
+    const videos = await this.videosModel.getAll({ establishment_id });
 
     if (!videos) return res.status(400).send({ error: "No hay videos" });
 
-    return res
-      .status(200)
-      .send({ message: "Videos con exito", videos: videos.flat() });
+    return res.status(200).send({ message: "Videos con exito", videos });
   };
 
   getVideoTurns = async (req, res) => {

@@ -51,19 +51,6 @@ export default function FormSearchVideo({options}) {
     return (
         <>
             <form class="flex flex-col gap-3 w-full">
-                {/*<div class='relative'>
-                    <section class="flex text-terciary border rounded-xl w-full border-primary disabled:border-gray-200 border-2 cursor-pointer p-2" onClick={()=>setSelects((prevState) =>({ ...prevState, establishment: {value: prevState.establishment.value, options: prevState.establishment.options, isOpen: !prevState.establishment.isOpen}}))}>
-                        <svg width="25" height="25" viewBox="0 0 24 24" stroke-width="1.5" stroke="#969696" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M0 0h24v24H0z" stroke="none"/><path d="M11 4a1 1 0 1 0 2 0 1 1 0 0 0-2 0M3 17l5 1 .75-1.5M14 21v-4l-4-3 1-6"/><path d="M6 12V9l5-1 3 3 3 1"/><path d="M19.5 20a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z" fill="currentColor"/>
-                        </svg>
-                        <span>Predio</span>
-                    </section>
-                    {selects.establishment.isOpen && <ul class="max-h-44 overflow-y-scroll absolute bg-white w-full text-black cursor-pointer rounded-xl p-2">
-                        {selects.establishment.options && selects.establishment.options.map(({value, text})=>{
-                            return <li class='hover:bg-primary hover:text-white w-full' value={value}>{text}</li>
-                        })}
-                    </ul>}
-                </div>*/}
                 <select required onChange={handleChangeEstablishment} class="border border-primary disabled:border-gray-200 border-2 w-full outline-none cursor-pointer rounded-lg p-2 focus:ring-primary focus:border-primary overflow-y-scroll">
                     <option hidden >Predio</option>
                     {selects.establishment.options && selects.establishment.options.map(({value, text})=>{

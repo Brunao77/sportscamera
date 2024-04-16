@@ -7,7 +7,7 @@ export class VideosModel {
         `SELECT videos.video_id, videos.date, videos.start_time, videos.end_time, videos.name, videos.video_url, videos.camera_id, cameras.field_name 
          FROM videos, cameras 
          WHERE cameras.establishment_id = $1 AND videos.camera_id = cameras.camera_id 
-         ORDER BY videos.date DESC`,
+         ORDER BY videos.date DESC, videos.start_time DESC`,
         [establishment_id]
       );
       return rows;
@@ -50,11 +50,11 @@ export class VideosModel {
   }
   static async delete({ video_id }) {
     try {
-      const result = await pool.query(
+      const { rowCount } = await pool.query(
         "DELETE FROM videos WHERE video_id = $1",
         [video_id]
       );
-      return result;
+      return rowCount;
     } catch (error) {
       console.log(error);
     }

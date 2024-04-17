@@ -1,6 +1,9 @@
 ---
 import Layout from '../layouts/Layout.astro'
 import Input from '../components/Input.astro'
+import Button from '../components/Button.astro';
+import Email from '../icons/Email.astro';
+import Password from '../icons/Password.astro';
 
 const user = Astro.locals.user;
 if (user) {
@@ -14,20 +17,16 @@ if (user) {
 		<strong class="text-5xl text-primary font-medium text-nowrap">Iniciar Sesion</strong>
 		<form method="POST" class="flex flex-col gap-4" id="loginForm">
 			<Input placeholder="Usuario" name="email" required type="email">
-				<svg class="absolute top-1/2 left-2 translate-x-0 translate-y-[-50%] pointer-events-none" width="25" height="25" viewBox="0 0 24 24" stroke-width="1.5" stroke="#969696" fill="none" strokde-linecap="round" stroke-linejoin="round">
-					<path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0" /><path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
-				</svg>
+				<Email />
 			</Input>
 			<Input placeholder="Contraseña" name='password' required type="password" minlength="5">
-				<svg class="absolute top-1/2 left-2 translate-x-0 translate-y-[-50%] pointer-events-none" width="25" height="25" viewBox="0 0 24 24" stroke-width="1.5" stroke="#969696" fill="none" stroke-linecap="round" stroke-linejoin="round">
-					<path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6z" /><path d="M11 16a1 1 0 1 0 2 0a1 1 0 0 0 -2 0" /><path d="M8 11v-4a4 4 0 1 1 8 0v4" />
-				</svg>
+				<Password />
 			</Input>
 			<span class="text-center text-red-500 text-sm hidden" id="errorSpan"></span>
-			<button class="flex items-center justify-center cursor-pointer rounded-2xl bg-primary border text-white text-l text-regular p-3 px-5 disabled:bg-primary_disabled" id="login_btn">
+			<Button type="submit" id="login_btn">
 				<span id="content_btn">INICIAR SESION</span>
 				<div class='w-6 h-6 border-4 border-ice border-l-transparent rounded-full animate-spin hidden' id="spinner"></div>
-			</button>
+			</Button>
 		</form>
 		<a class="text-terciary cursor-pointer" href="/contact">Contactanos!</a>
 	</section>

@@ -3,6 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import FormSearchVideoUser from '../components/FormSearchVideoUser.jsx'
 import { VideosModel } from '../models/videos';
 import VideoList from '../components/VideoList.jsx';
+import Navbar from '../components/Navbar.astro';
 
 const user = Astro.locals.user;
 if (!user) {
@@ -19,40 +20,7 @@ const videos = await VideosModel.getAll({ establishment_id });
 ---
 
 <Layout title="SportsCamera!">
-	<aside class="bg-primary hidden md:flex flex-col justify-between p-4 color-white rounded-l-xl text-white">
-        <ul>
-            <li>
-                <a class="w-full flex gap-2 hover:bg-[#a262a3] rounded-xl py-3 px-1" href="/video-list">
-                    <svg width="25" height="25" viewBox="0 0 24 24" stroke-width="1.5" stroke="#fff" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 6l11 0" /><path d="M9 12l11 0" /><path d="M9 18l11 0" /><path d="M5 6l0 .01" /><path d="M5 12l0 .01" /><path d="M5 18l0 .01" />
-                    </svg>
-                    <span>Lista de videos</span>
-                </a>
-            </li>
-            <li>
-                <a class="w-full flex gap-2 hover:bg-[#a262a3] rounded-xl py-3 px-1" href="/video-list">
-                    <svg width="25" height="25" viewBox="0 0 24 24" stroke-width="1.5" stroke="#fff" fill="#fff" stroke-linecap="round" stroke-linejoin="round">
-                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M15 10l4.553 -2.276a1 1 0 0 1 1.447 .894v6.764a1 1 0 0 1 -1.447 .894l-4.553 -2.276v-4z" /><path d="M3 6m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z" />
-                    </svg>
-                    <span>Grabar</span>
-                </a>
-            </li>
-            <li>
-                <a class="w-full flex gap-2 hover:bg-[#a262a3] rounded-xl py-3 px-1" href="/video-list">
-                    <svg width="25" height="25" viewBox="0 0 24 24" stroke-width="1.5" stroke="#fff" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z" /><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" />
-                    </svg>
-                    <span>Configuracion</span>
-                </a>
-            </li>
-        </ul>
-        <div class="flex gap-2">
-            <svg width="25" height="25" viewBox="0 0 24 24" stroke-width="1.5" stroke="#fff" fill="#fff" stroke-linecap="round" stroke-linejoin="round">
-                <path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0" /><path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
-            </svg>
-            <span>Nombre_establecimiento</span>
-        </div>
-	</aside>
+	<Navbar />
 	<section class="search_video grid bg-white h-full w-full md:rounded-r-xl md:gap-x-10 md:gap-y-5 px-5 text-center">
 		<strong class="font-medium text-xl md:text-3xl text-primary text-nowrap">Videos del establecimiento</strong>
         <section class="video_list w-full">
@@ -60,7 +28,7 @@ const videos = await VideosModel.getAll({ establishment_id });
         </section>
         <section class="filter flex flex-col gap-2 w-full">
             <strong class="text-start text-xl text-primary font-medium text-nowrap">Buscar video</strong>
-            <FormSearchVideoUser establishment_id={establishment_id}  client:visible />
+            <FormSearchVideoUser establishment_id={establishment_id} client:visible />
         </section>
 	</section>
 </Layout>

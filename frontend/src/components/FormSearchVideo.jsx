@@ -1,21 +1,11 @@
 import { useState, useEffect } from 'preact/hooks'
+import { getLastDays } from '../utils'
 
 export default function FormSearchVideo({options}) {
     const [selects, setSelects] = useState({establishment: {value: '', options:[]}, field: {value:'', options: []}, date: {value:'', options: []}, hour: {value:'', options: []}})
 
     useEffect(()=>{
-        const today = new Date();
-        const dates = []
-        // Iterar para los últimos 7 días, empezando desde hoy
-        for (let i = 0; i <= 7; i++) {
-            let date = new Date();
-            date.setDate(today.getDate() - i);
-
-            // Formatear la fecha (puedes personalizar el formato según tus necesidades)
-            const formattedDate = ("0" + date.getDate()).slice(-2) +"-"+("0" + (date.getMonth() + 1)).slice(-2)+"-"+date.getFullYear();
-
-            dates.push({value:formattedDate, text:formattedDate})
-        }
+        const dates = getLastDays()
         setSelects((prevState) => ({ ...prevState, establishment: {value: '',  options}, date: {value: '', options: dates} }))
     }, [])
 

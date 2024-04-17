@@ -1,0 +1,6 @@
+---
+    const { id, type } = Astro.props
+---
+<button type={type} id={id} class="flex items-center justify-center cursor-pointer rounded-2xl bg-primary border text-white text-l text-regular p-3 px-5 disabled:bg-primary_disabled">
+    <slot />
+</button>

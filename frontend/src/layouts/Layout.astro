@@ -1,7 +1,7 @@
 ---
 import { ViewTransitions } from "astro:transitions";
 
-const { title } = Astro.props;
+const { title, width, height } = Astro.props;
 ---
 
 <!doctype html>
@@ -17,7 +17,7 @@ const { title } = Astro.props;
 	</head>
 	<body class="overflow-hidden relative">
 		<div class="w-screen h-screen md:flex md:items-center md:justify-center">
-			<main class=`z-10 h-full md:h-auto flex md:flex-row flex-col-reverse md:rounded-xl`>
+			<main class=`z-10 h-full md:h-${height ? height : '2/3'} md:w-${width ? width : '2/3'} flex md:flex-row flex-col-reverse md:rounded-xl`>
 				<slot />
 			</main>
 		</div>

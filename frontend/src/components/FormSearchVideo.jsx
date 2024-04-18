@@ -40,7 +40,7 @@ export default function FormSearchVideo({options}) {
   
     return (
         <>
-            <form class="flex flex-col gap-3 w-full">
+            <form class="flex flex-col gap-5 w-2/3">
                 <select required onChange={handleChangeEstablishment} class="border border-primary disabled:border-gray-200 border-2 w-full outline-none cursor-pointer rounded-lg p-2 focus:ring-primary focus:border-primary overflow-y-scroll">
                     <option hidden >Predio</option>
                     {selects.establishment.options && selects.establishment.options.map(({value, text})=>{

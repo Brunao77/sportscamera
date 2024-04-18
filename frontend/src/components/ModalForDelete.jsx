@@ -24,7 +24,7 @@ export default function ModalForDelete({ listVideos, setListVideos, videoForDele
                 <span class="text-sm md:text-md">Horario: {videoForDelete && videoForDelete.start_time.slice(0,-3)} a {videoForDelete && videoForDelete.end_time.slice(0,-3)}</span>
             </section>
             <section class="flex justify-end gap-2 mt-6">
-                <button class="cursor-pointer rounded-2xl bg-primary text-white text-l text-regular p-3 px-5" id="cancel_btn" onClick={()=>(setVideoForDelete(null))}>Cancelar</button>
+                <button class="cursor-pointer rounded-2xl bg-primary text-white text-l text-regular p-3 px-5" onClick={()=>(setVideoForDelete(null))}>Cancelar</button>
                 <button class="cursor-pointer rounded-2xl bg-primary text-white text-l text-regular p-3 px-5" onClick={handleDelete}>Eliminar</button>
             </section>
         </div>

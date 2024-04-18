@@ -2,6 +2,7 @@
 import Layout from "../layouts/Layout.astro"
 import Navbar from "../components/Navbar.astro"
 import Input from "../components/Input.astro"
+import ChangePassword from "../components/ChangePassword.astro"
 import { UserModel } from "../models/user";
 import { EstablishmentModel } from "../models/establishment";
 import { CameraModel } from "../models/camera";
@@ -9,7 +10,7 @@ import Email from "../icons/Email.astro";
 import Button from "../components/Button.astro";
 import Establishment from "../icons/Establishment.astro";
 import Address from "../icons/Address.astro";
-import Camera from "../icons/Camera_white.astro";
+import Camera from "../icons/Camera.astro";
 
 
 const user = Astro.locals.user;
@@ -24,34 +25,42 @@ const { email } = await UserModel.profile({ user_id })
 const establishment = await EstablishmentModel.getOne({ establishment_id })
 
 const cameras = await CameraModel.getAll({establishment_id});
-console.log(establishment)
-
 
 ---
 
 <Layout title="SportsCamera!">
 	<Navbar />
-
-	<section class="search_video grid bg-white h-full w-full md:rounded-r-xl md:gap-x-10 md:gap-y-5 px-5 text-center">
+	<section class=" bg-white h-full w-full md:rounded-r-xl md:gap-x-10 md:gap-y-5 p-5 text-center">
 		<strong class="font-medium text-xl md:text-3xl text-primary text-nowrap">Configuracion</strong>
-        <section>
-            <Input placeholder="Email" value={email} type="email" required>
-                <Email />
-            </Input>
-            <Input placeholder="Nombre" value={establishment.name} type="text" required>
-                <Establishment />
-            </Input>
-            <Input placeholder="Direccion" value={establishment.address} type="text" required>
-                <Address />
-            </Input>
-            {cameras.map(({ field_name })=>{
-                return <Input type="text" value={field_name} required>
-                    <Camera />
-                </Input>
-            })}
-            <Button>CAMBIAR CONTRASEÑA</Button>
-            <Button>GUARDAR CAMBIOS</Button>
-            <Button>CERRAR SESION</Button>
+        <section class="flex flex-col justify-between text-start h-full">
+            <div>
+                <strong>Usuario</strong>
+                <div class="flex gap-3 flex-wrap my-2">
+                    <Input placeholder="Email" value={email} type="email" required>
+                        <Email />
+                    </Input>
+                    <Button>CAMBIAR CONTRASEÑA</Button>
+                </div>
+                <strong>Establecimiento</strong>
+                <div class="flex flex-wrap gap-3 my-2">
+                    <Input placeholder="Nombre" value={establishment.name} type="text" required>
+                        <Establishment />
+                    </Input>
+                    <Input placeholder="Direccion" value={establishment.address} type="text" required>
+                        <Address />
+                    </Input>
+                    {cameras.map(({ field_name })=>{
+                        return <Input type="text" value={field_name} required>
+                            <Camera />
+                        </Input>
+                    })}
+                </div>
+            </div>
+            <div class="flex justify-end">
+                <Button>CERRAR SESION</Button>
+                <Button>GUARDAR CAMBIOS</Button>
+            </div>
         </section>
 	</section>
+    <ChangePassword />
 </Layout>

@@ -1,0 +1,82 @@
+---
+import Layout from "../../layouts/Layout.astro"
+import Input from "../../components/Input.astro"
+import Button from "../../components/Button.astro"
+import Password from "../../icons/Password.astro"
+
+const { token } = Astro.params
+---
+
+<Layout>
+    <form method='POST' id="changePassword">
+        <Input placeholder="Contraseaña" id="password_inp" required>
+            <Password />
+        </Input>
+        <span class="text-center text-red-500 text-sm hidden" id="errorSpan"></span>
+        <Button type="submit" id="change_password_btn">
+            <span id="content_btn">INICIAR SESION</span>
+            <div class='w-6 h-6 border-4 border-ice border-l-transparent rounded-full animate-spin hidden' id="spinner"></div>
+        </Button>
+    </form>
+</Layout>
+<script is:inline>
+	document.addEventListener('astro:page-load', () => {
+		const form = document.getElementById('changePassword')
+		form.addEventListener('submit', async function(event){
+			event.preventDefault();
+
+			const loginBtn = document.getElementById('change_password_btn')
+			const buttonContent = document.getElementById('content_btn');
+			const spinner = document.getElementById('spinner');
+			
+			loginBtn.disabled = true
+
+			buttonContent.classList.add('hidden');
+			spinner.classList.remove('hidden');
+			
+			const formData = new FormData(this);
+
+			const inputs = form.querySelectorAll('input');
+			inputs.forEach(function(input) {
+				input.disabled = true;
+			});			
+
+			try {
+				const response = await fetch(`/api/reset-password/${token}`, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+                    //GET PASSWORD FROM FORMDATA
+					body: JSON.stringify({password: })
+				});
+				if (response.status === 200) {
+					window.location.href = '/sign-in';
+					
+				} else {
+					const res = await response.json()
+
+                    const errorSpan = document.getElementById('errorSpan');
+					errorSpan.textContent = res.message
+					errorSpan.classList.remove('hidden');
+
+                    if(res.status === 401){
+                        setTimeout(function() {
+                            window.location.href = "/sign-in";
+                        }, 2000);
+                    }
+
+					inputs.forEach(function(input) {
+						input.disabled = false;
+					});
+
+					loginBtn.disabled = false
+					spinner.classList.add('hidden');
+					buttonContent.classList.remove('hidden');
+				}
+			} catch (error) {
+				console.error('Error en la solicitud:', error);
+			}
+		});
+	}, { once: true })
+</script>

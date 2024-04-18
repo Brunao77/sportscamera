@@ -25,13 +25,13 @@ export async function POST(context: APIContext): Promise<Response> {
 
     if (!token || !isWithinExpirationDate(token.expires_at))
 		return new Response(JSON.stringify({message:"Token invalido"}), {
-			status: 400
+			status: 401
 		})
 
 
     await lucia.invalidateUserSessions(token.user_id);
     const hashedPassword = await bcrypt.hash(password, 12);
-    await UserModel.updatePassword({ password:hashedPassword, user_id: token.user_id })
+    await UserModel.updatePassword({ password: hashedPassword, user_id: token.user_id })
 
     const session = await lucia.createSession(token.user_id, {});
     const sessionCookie = lucia.createSessionCookie(session.id);
@@ -43,18 +43,4 @@ export async function POST(context: APIContext): Promise<Response> {
             "Referrer-Policy": "no-referrer"
         }
     });
-    
-
-    const cameras = await CameraModel.getAll({establishment_id});
-  
-    if (!cameras) return new Response(JSON.stringify({message:"No existen camaras"}), {
-        status: 400
-    });
-  
-    return new Response(JSON.stringify({message:"Camaras con exito", cameras}), {
-        status: 200,
-        headers: {
-            "Referrer-Policy": "no-referrer"
-        }
-    }); 
 }

@@ -2,31 +2,22 @@
 import Layout from "../layouts/Layout.astro"
 import Navbar from "../components/Navbar.astro"
 import Input from "../components/Input.astro"
-import ChangePassword from "../components/ChangePassword.astro"
-import { UserModel } from "../models/user";
 import { EstablishmentModel } from "../models/establishment";
 import { CameraModel } from "../models/camera";
-import Email from "../icons/Email.astro";
 import Button from "../components/Button.astro";
 import Establishment from "../icons/Establishment.astro";
-import Address from "../icons/Address.astro";
 import Camera from "../icons/Camera.astro";
-import Phone from "../icons/Phone.astro";
-
 
 const user = Astro.locals.user;
 if (!user) {
 	return Astro.redirect("/sign-in");
 }
 
-const { user_id, establishment_id } = user
-
-const { email } = await UserModel.profile({ user_id })
+const { establishment_id } = user
 
 const establishment = await EstablishmentModel.getOne({ establishment_id })
 
 const cameras = await CameraModel.getAll({establishment_id});
-
 ---
 
 <Layout title="SportsCamera!">

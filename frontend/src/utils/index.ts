@@ -5,8 +5,6 @@ import { encodeHex } from "oslo/encoding";
 import { PasswordResetModel } from "../models/password_reset.js";
 import nodemailer from 'nodemailer'
 
-
-
 export const convertirFormatoFecha = (fechaISO) => {
   const fecha = new Date(fechaISO);
 

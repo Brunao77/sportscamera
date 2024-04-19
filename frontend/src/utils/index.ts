@@ -3,6 +3,7 @@ import { TimeSpan, createDate } from "oslo";
 import { sha256 } from "oslo/crypto";
 import { encodeHex } from "oslo/encoding";
 import { PasswordResetModel } from "../models/password_reset.js";
+import nodemailer from 'nodemailer'
 
 
 
@@ -54,17 +55,17 @@ export async function sendPasswordResetToken(email, verificationLink): Promise<s
 	const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: 'your-email@gmail.com',
-        pass: 'your-email-password',
+        user: import.meta.env.EMAIL,
+        pass: import.meta.env.EMAIL_PASSWORD,
       },
     });
     const mailOptions = {
-      from: 'your-email@gmail.com',
+      from: import.meta.env.EMAIL,
       to: email,
       subject: 'Password Reset',
       text: `Click the following link to reset your password: ${verificationLink}`,
     };
-    const statusEmailSent = transporter.sendMail(mailOptions, (error, info) => {
+    const statusEmailSent = transporter.sendMail(mailOptions, (error) => {
       if (error) return 500
       return 200
     });

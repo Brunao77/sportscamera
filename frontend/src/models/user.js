@@ -4,7 +4,7 @@ export class UserModel {
   static async findWithEmail({ email }) {
     try {
       const { rows } = await pool.query(
-        "SELECT user_id FROM users WHERE email = $1",
+        "SELECT * FROM users WHERE email = $1",
         [email]
       );
       return rows[0];
@@ -37,7 +37,7 @@ export class UserModel {
   static async updatePassword({ password, user_id }) {
     try {
       const { rows } = await pool.query(
-        "UPDATE users SET password = $1 WHERE id = $2",
+        "UPDATE users SET password = $1 WHERE user_id = $2",
         [password, user_id]
       );
       return rows[0];

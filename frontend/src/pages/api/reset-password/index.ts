@@ -15,7 +15,7 @@ export async function POST(context: APIContext): Promise<Response> {
         }); 
     
     const verificationToken = await createPasswordResetToken(user_id);
-    const verificationLink = import.meta.env.URL "/reset-password/" + verificationToken;
+    const verificationLink = import.meta.env.URL + "/password_reset/" + verificationToken;
 
     const statusEmailSent = await sendPasswordResetToken(email, verificationLink);
 

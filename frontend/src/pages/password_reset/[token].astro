@@ -8,8 +8,8 @@ const { token } = Astro.params
 ---
 
 <Layout>
-    <form method='POST' id="changePassword">
-        <Input placeholder="Contraseaña" id="password_inp" required>
+    <form method='POST' class="bg-white flex flex-col items-center justify-between p-2 rounded-xl w-full" id="changePassword">
+        <Input placeholder="Contraseaña" name="password" id="password_inp" required>
             <Password />
         </Input>
         <span class="text-center text-red-500 text-sm hidden" id="errorSpan"></span>
@@ -19,7 +19,7 @@ const { token } = Astro.params
         </Button>
     </form>
 </Layout>
-<script is:inline>
+<script is:inline define:vars={{ token }}>
 	document.addEventListener('astro:page-load', () => {
 		const form = document.getElementById('changePassword')
 		form.addEventListener('submit', async function(event){
@@ -35,6 +35,13 @@ const { token } = Astro.params
 			spinner.classList.remove('hidden');
 			
 			const formData = new FormData(this);
+			
+			const formDataObject = {};
+			formData.forEach((value, key) => {
+				formDataObject[key] = value;
+			});
+
+			console.log(formDataObject)
 
 			const inputs = form.querySelectorAll('input');
 			inputs.forEach(function(input) {
@@ -47,11 +54,10 @@ const { token } = Astro.params
 					headers: {
 						'Content-Type': 'application/json'
 					},
-                    //GET PASSWORD FROM FORMDATA
-					body: JSON.stringify({password: })
+					body: JSON.stringify(formDataObject)
 				});
 				if (response.status === 200) {
-					window.location.href = '/sign-in';
+					console.log(await response.json())
 					
 				} else {
 					const res = await response.json()

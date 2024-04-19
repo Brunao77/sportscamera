@@ -28,7 +28,6 @@ export async function POST(context: APIContext): Promise<Response> {
 			status: 401
 		})
 
-
     await lucia.invalidateUserSessions(token.user_id);
     const hashedPassword = await bcrypt.hash(password, 12);
     await UserModel.updatePassword({ password: hashedPassword, user_id: token.user_id })

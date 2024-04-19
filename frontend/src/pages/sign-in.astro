@@ -4,12 +4,47 @@ import Input from '../components/Input.astro'
 import Button from '../components/Button.astro';
 import Email from '../icons/Email.astro';
 import Password from '../icons/Password.astro';
+import { lucia } from "../auth.ts";
+import { UserModel } from "../models/user.js"
+import bcrypt from "bcrypt";
 
 const user = Astro.locals.user;
 if (user) {
 	return Astro.redirect("/video-list");
 }
 
+let error = ''
+if(Astro.request.method === 'POST'){
+	try {
+		const data = await Astro.request.formData();
+		const email = data.get("email");
+		const password = data.get("password");
+
+		if (!email || !password)
+			error = 'Los campos son requeridos'
+
+		const user = await UserModel.findWithEmail({ email });
+		
+		if (!user)
+			error = 'Credenciales incorrectas'
+			
+		const checkPassword = await bcrypt.compare(password, user.password);
+
+		if (!checkPassword)
+			error = 'Credenciales incorrectas'
+
+		const session = await lucia.createSession(user.user_id, {});
+		const sessionCookie = lucia.createSessionCookie(session.id);
+		Astro.cookies.set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes)
+
+		if(!error)
+			return Astro.redirect("/video-list");
+	} catch (error) {
+		if (error instanceof Error) {
+		console.error(error.message);
+		}
+	}
+}
 ---
 
 <Layout title="SportsCamera!">
@@ -67,7 +102,6 @@ if (user) {
 			
 
 			try {
-				console.log('ingreso')
 				const response = await fetch('/api/user/login', {
 					method: 'POST',
 					headers: {
@@ -76,7 +110,6 @@ if (user) {
 					body: JSON.stringify(formDataObject)
 				});
 				if (response.status === 200) {
-					console.log('ok')
 					window.location.href = '/video-list';
 					
 				} else {

@@ -11,6 +11,7 @@ import Button from "../components/Button.astro";
 import Establishment from "../icons/Establishment.astro";
 import Address from "../icons/Address.astro";
 import Camera from "../icons/Camera.astro";
+import Phone from "../icons/Phone.astro";
 
 
 const user = Astro.locals.user;
@@ -34,20 +35,10 @@ const cameras = await CameraModel.getAll({establishment_id});
 		<strong class="font-medium text-xl md:text-3xl text-primary text-nowrap">Configuracion</strong>
         <section class="flex flex-col justify-between text-start h-full">
             <div>
-                <strong>Usuario</strong>
-                <div class="flex gap-3 flex-wrap my-2">
-                    <Input placeholder="Email" value={email} type="email" required>
-                        <Email />
-                    </Input>
-                    <Button>CAMBIAR CONTRASEÑA</Button>
-                </div>
                 <strong>Establecimiento</strong>
                 <div class="flex flex-wrap gap-3 my-2">
                     <Input placeholder="Nombre" value={establishment.name} type="text" required>
                         <Establishment />
-                    </Input>
-                    <Input placeholder="Direccion" value={establishment.address} type="text" required>
-                        <Address />
                     </Input>
                     {cameras.map(({ field_name })=>{
                         return <Input type="text" value={field_name} required>
@@ -57,10 +48,21 @@ const cameras = await CameraModel.getAll({establishment_id});
                 </div>
             </div>
             <div class="flex justify-end">
-                <Button>CERRAR SESION</Button>
+                <Button id="logout_btn">CERRAR SESION</Button>
                 <Button>GUARDAR CAMBIOS</Button>
             </div>
         </section>
 	</section>
-    <ChangePassword />
+    <script>
+
+        document.getElementById('logout_btn').addEventListener('click',async ()=>{
+            await fetch('api/user/logout', {
+                method:'POST',
+                headers: {
+					'Content-Type': 'application/json'
+				},
+            })
+        })
+
+    </script>
 </Layout>

@@ -6,7 +6,7 @@ import VideoList from '../components/VideoList.jsx';
 import Navbar from '../components/Navbar.astro';
 
 const user = Astro.locals.user;
-if (!user) {
+if (!user || !user.establishment_id) {
 	return Astro.redirect("/sign-in");
 }
 
@@ -24,11 +24,11 @@ const videos = await VideosModel.getAll({ establishment_id });
 	<section class="search_video grid bg-white h-full w-full md:rounded-r-xl md:gap-x-10 md:gap-y-5 px-5 text-center">
 		<strong class="font-medium text-xl md:text-3xl text-primary text-nowrap">Videos del establecimiento</strong>
         <section class="video_list w-full">
-            <VideoList videos={videos} client:visible />
+            {videos ? <VideoList videos={videos} client:visible /> : <span>No hay videos</span>}
         </section>
         <section class="filter flex flex-col gap-2 w-full">
             <strong class="text-start text-xl text-primary font-medium text-nowrap">Buscar video</strong>
-            <FormSearchVideoUser establishment_id={establishment_id} client:visible />
+            {videos ? <FormSearchVideoUser establishment_id={establishment_id} client:visible /> : <span>No hay videos</span>}
         </section>
 	</section>
 </Layout>

@@ -1,9 +1,4 @@
-import { generateId } from "lucia";
-import { TimeSpan, createDate } from "oslo";
-import { sha256 } from "oslo/crypto";
-import { encodeHex } from "oslo/encoding";
-import { PasswordResetModel } from "../models/password_reset.js";
-import nodemailer from 'nodemailer'
+
 
 export const convertirFormatoFecha = (fechaISO) => {
   const fecha = new Date(fechaISO);
@@ -41,32 +36,3 @@ export const getLastDays = () => {
   return dates;
 };
 
-export async function createPasswordResetToken(userId): Promise<string> {
-	await PasswordResetModel.deleteUser({ user_id: userId })
-	const tokenId = generateId(40);
-	const tokenHash = encodeHex(await sha256(new TextEncoder().encode(tokenId)));
-	await PasswordResetModel.insertToken({ token_hash: tokenHash, user_id: userId, expires_at: createDate(new TimeSpan(2, "h")) }) 
-	return tokenId;
-}
-
-export async function sendPasswordResetToken(email, verificationLink): Promise<string> {
-	const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: import.meta.env.EMAIL,
-        pass: import.meta.env.EMAIL_PASSWORD,
-      },
-    });
-    const mailOptions = {
-      from: import.meta.env.EMAIL,
-      to: email,
-      subject: 'Password Reset',
-      text: `Click the following link to reset your password: ${verificationLink}`,
-    };
-    const statusEmailSent = transporter.sendMail(mailOptions, (error) => {
-      if (error) return 500
-      return 200
-    });
-
-    return statusEmailSent
-}

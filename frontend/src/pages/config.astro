@@ -48,11 +48,9 @@ const cameras = await CameraModel.getAll({establishment_id});
 
         document.getElementById('logout_btn').addEventListener('click',async ()=>{
             await fetch('api/user/logout', {
-                method:'POST',
-                headers: {
-					'Content-Type': 'application/json'
-				},
+                method:'POST'
             })
+            
         })
 
     </script>

@@ -12,6 +12,34 @@ export default {
         ice: "var(--color-twitch-ice)",
         primary_disabled: "var(--color-primary-disabled)",
       },
+      animation: {
+        rubberband: "rubberband 2s ease-in-out",
+      },
+      keyframes: {
+        rubberband: {
+          "0%": {
+            transform: "scale(1)",
+          },
+          "30%": {
+            transform: "scale(1.20)",
+          },
+          "40%": {
+            transform: "scale(0.75)",
+          },
+          "50%": {
+            transform: "scale(1.15)",
+          },
+          "65%": {
+            transform: "scale(0.95)",
+          },
+          "75%": {
+            transform: "scale(1.05)",
+          },
+          "100%": {
+            transform: "scale(1)",
+          },
+        },
+      },
       screens: {
         xs: "360px",
         "3xl": "1650px",

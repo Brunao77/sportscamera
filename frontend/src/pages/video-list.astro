@@ -6,15 +6,16 @@ import VideoList from '../components/VideoList.jsx';
 import Navbar from '../components/Navbar.astro';
 
 const user = Astro.locals.user;
-if (!user || !user.establishment_id) {
+if (!user) {
 	return Astro.redirect("/sign-in");
 }
 
 const { establishment_id } = user
 
-if (!establishment_id)
-      return Astro.redirect("/sign-in");
-
+if (!establishment_id){
+    Astro.cookies.delete('auth_session')
+    return Astro.redirect("/sign-in");
+}
 const videos = await VideosModel.getAll({ establishment_id });
 
 ---
@@ -22,9 +23,9 @@ const videos = await VideosModel.getAll({ establishment_id });
 <Layout title="SportsCamera!">
 	<Navbar />
 	<section class="search_video grid bg-white h-full w-full md:rounded-r-xl md:gap-x-10 md:gap-y-5 px-5 text-center">
-		<strong class="font-medium text-xl md:text-3xl text-primary text-nowrap">Videos del establecimiento</strong>
-        <section class="video_list w-full">
-            {videos ? <VideoList videos={videos} client:visible /> : <span>No hay videos</span>}
+		<strong class="font-medium text-xl md:text-3xl text-primary text-nowrap h-fit">Videos del establecimiento</strong>
+        <section class="video_list w-full h-full">
+            <VideoList videos={videos} client:visible />
         </section>
         <section class="filter flex flex-col gap-2 w-full">
             <strong class="text-start text-xl text-primary font-medium text-nowrap">Buscar video</strong>

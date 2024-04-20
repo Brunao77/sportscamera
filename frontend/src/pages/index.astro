@@ -2,6 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 import FormSearchVideo from '../components/FormSearchVideo.jsx'
 import { EstablishmentModel } from '../models/establishment.js';
+import Success from '../components/Success.astro';
 
 
 const establishments = await EstablishmentModel.getAll();

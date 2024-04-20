@@ -3,7 +3,7 @@ import type { APIContext } from "astro";
 
 export async function POST(context: APIContext): Promise<Response> {
 	if (!context.locals.session) {
-		return new Response(null, {
+		return new Response(JSON.stringify({message:"Credenciales incorrectas"}), {
 			status: 401
 		});
 	}

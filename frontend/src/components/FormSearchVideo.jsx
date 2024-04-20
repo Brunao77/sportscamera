@@ -79,7 +79,7 @@ export default function FormSearchVideo({options}) {
     }
   
     return (
-        <form class="flex flex-col gap-5 w-2/3" onSubmit={handleSubmit}>
+        <form class="flex flex-col gap-5 w-80" onSubmit={handleSubmit}>
             <Select placeholder='Predio' option={selects.establishment} onChange={handleChangeEstablishment} />
             <Select placeholder='Cancha' disabled={!selects.field.options.length} option={selects.field} onChange={handleChangeField} />
             <Select placeholder='Dia' disabled={!selects.field.value} option={selects.date} onChange={handleChangeDate} />

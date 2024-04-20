@@ -13,5 +13,12 @@ export async function POST(context: APIContext): Promise<Response> {
 	const sessionCookie = lucia.createBlankSessionCookie();
 	context.cookies.set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
 
-	return context.redirect("/");
+	return new Response(JSON.stringify({message: 'Sesion cerrada con exito'}), {
+		status: 200,
+		headers: {
+            Location: "/",
+            "Set-Cookie": sessionCookie.serialize(),
+            "Referrer-Policy": "no-referrer"
+        }
+	})
 }

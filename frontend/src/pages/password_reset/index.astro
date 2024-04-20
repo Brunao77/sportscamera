@@ -47,8 +47,6 @@ export async function sendPasswordResetToken(email, verificationLink): Promise<s
     return statusEmailSent
 }
 
-
-
 let error = ''
 let success = ''
 if(Astro.request.method === 'POST'){
@@ -79,16 +77,13 @@ if(Astro.request.method === 'POST'){
     }
 }
 ---
-
 <Layout>
-	<form method="POST" class="bg-white flex flex-col items-center justify-between p-2 rounded-xl w-full">
-        <div class="flex flex-col items-center gap-4 text-center">
-            <strong class="text-2xl text-primary">Recupera tu cuenta de SportsCamera</strong>
-            <p>Introduce el correo electrónico asociado a tu cuenta para cambiar tu contraseña.</p>
-            <Input name="email" placeholder="Email" type="email" required>
-                <Email />
-            </Input>
-        </div>
+	<form method="POST" class="bg-white flex flex-col items-start justify-center gap-5 p-4 rounded-xl w-full h-full md:h-1/2">
+        <strong class="text-2xl text-primary">Recupera tu cuenta de SportsCamera</strong>
+        <p class="text-wrap">Introduce el correo electrónico asociado a tu cuenta para cambiar tu contraseña.</p>
+        <Input name="email" placeholder="Email" type="email" required>
+            <Email />
+        </Input>
         <Button type="submit">SIGUIENTE</Button>
     </form>
     {success && <Success message={success} />}

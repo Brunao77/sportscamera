@@ -2,7 +2,6 @@
 import Layout from '../layouts/Layout.astro';
 import FormSearchVideo from '../components/FormSearchVideo.jsx'
 import { EstablishmentModel } from '../models/establishment.js';
-import Success from '../components/Success.astro';
 
 
 const establishments = await EstablishmentModel.getAll();
@@ -13,12 +12,12 @@ let optionsEstablishments = establishments && establishments.map(({establishment
 ---
 
 <Layout title="SportsCamera!">
-	<section class="bg-primary w-full text-white md:h-auto h-1/2 text-center flex flex-col items-center justify-center md:rounded-b-xl md:rounded-l-xl md:rounded-br-none gap-5 py-4 md:py-0">
+	<section class="bg-primary w-full md:w-fit text-white md:h-auto h-1/2 text-center flex flex-col items-center justify-center md:rounded-b-xl md:rounded-l-xl md:rounded-br-none gap-5 py-12 md:py-0">
 		<h1 class="font-medium text-5xl">SportsCamera!</h1>
 		<p class="m-0 font-light text-l w-3/4">Servicio de grabacion en establecimientos deportivos</p>
 		<a class="rounded-2xl border p-3" href="/sign-in">INICIAR SESION</a>
 	</section>
-	<section class="bg-white h-full w-full rounded-t-xl md:rounded-r-xl md:rounded-tl-none flex flex-col gap-5 items-center justify-between p-5 px-10">
+	<section class="bg-white h-full w-full md:w-fit rounded-t-xl md:rounded-r-xl md:rounded-tl-none flex flex-col gap-5 items-center justify-center p-5 md:px-32">
 		<strong class="text-5xl text-primary font-medium text-nowrap">Buscar video</strong>
 		{optionsEstablishments ? <FormSearchVideo options={optionsEstablishments} client:visible /> : <span>Aun no hay establecimientos</span>}
 		<a class="text-terciary cursor-pointer" href="/contact">Contactanos!</a>

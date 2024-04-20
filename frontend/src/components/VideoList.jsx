@@ -24,7 +24,7 @@ export default function VideoList({videos}) {
                     <option value='older'>Mas antiguo</option>
                 </select>
             </div>
-            <div class="overflow-scroll max-h-[50vh] md:max-h-[70vh] md:w-[400px]">
+            <div class="overflow-auto h-full pb-5">
                 {listVideos && listVideos.map((video)=>{
                         const {name, field_name, date, start_time, end_time} = video
                         return(

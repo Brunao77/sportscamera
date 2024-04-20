@@ -25,7 +25,11 @@ export async function POST(context: APIContext): Promise<Response> {
 
     if (!token || !isWithinExpirationDate(token.expires_at))
 		return new Response(JSON.stringify({message:"Token invalido"}), {
-			status: 401
+			status: 401,
+            headers: {
+                Location: "/",
+                "Referrer-Policy": "no-referrer"
+            }
 		})
 
     await lucia.invalidateUserSessions(token.user_id);

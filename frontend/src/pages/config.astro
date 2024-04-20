@@ -18,13 +18,14 @@ const { establishment_id } = user
 const establishment = await EstablishmentModel.getOne({ establishment_id })
 
 const cameras = await CameraModel.getAll({establishment_id});
+
 ---
 
 <Layout title="SportsCamera!">
 	<Navbar />
-	<section class=" bg-white h-full w-full md:rounded-r-xl md:gap-x-10 md:gap-y-5 p-5 text-center">
-		<strong class="font-medium text-xl md:text-3xl text-primary text-nowrap">Configuracion</strong>
-        <section class="flex flex-col justify-between text-start h-full">
+	<section class="bg-white h-full w-full md:rounded-r-xl text-center">
+		<strong class="font-medium text-2xl md:text-3xl text-primary text-nowrap">Configuracion</strong>
+        <div class="flex flex-col justify-between text-start h-full">
             <div>
                 <strong>Establecimiento</strong>
                 <div class="flex flex-wrap gap-3 my-2">
@@ -42,16 +43,17 @@ const cameras = await CameraModel.getAll({establishment_id});
                 <Button id="logout_btn">CERRAR SESION</Button>
                 <Button>GUARDAR CAMBIOS</Button>
             </div>
-        </section>
+        </div>
 	</section>
     <script>
-
         document.getElementById('logout_btn').addEventListener('click',async ()=>{
-            await fetch('api/user/logout', {
-                method:'POST'
+            const response = await fetch('api/user/logout', {
+                method:'POST',
+                headers: {
+					'Content-Type': 'application/json'
+				},
             })
-            
+            if(response.ok) window.location.href = response.headers.get('Location')
         })
-
     </script>
 </Layout>

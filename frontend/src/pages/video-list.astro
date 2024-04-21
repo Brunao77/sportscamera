@@ -2,7 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 import FormSearchVideoUser from '../components/FormSearchVideoUser.jsx'
 import { VideosModel } from '../models/videos';
-import VideoList from '../components/VideoList.jsx';
+import ListVideos from '../components/VideoList.jsx';
 import Navbar from '../components/Navbar.astro';
 
 const user = Astro.locals.user;
@@ -25,7 +25,7 @@ const videos = await VideosModel.getAll({ establishment_id });
 	<section class="search_video grid bg-white h-full w-full md:rounded-r-xl px-5 text-center gap-y-4 md: gap-x-20">
 		<strong class="font-medium text-2xl md:text-3xl text-primary text-nowrap h-fit">Videos del establecimiento</strong>
         <section class="video_list w-full md:w-[450px] h-full overflow-hidden">
-            <VideoList videos={videos} client:visible />
+            <ListVideos videos={videos} client:visible />
         </section>
         <section class="filter flex flex-col gap-2 w-full">
             <strong class="text-start text-xl text-primary font-medium text-nowrap">Buscar video</strong>

@@ -20,8 +20,8 @@ export default function VideoList({videos}) {
             <div class="flex">
                 <span>Ordenar por</span>
                 <select class="outline-none" onChange={handleFilter}>
-                    <option value='most_recent'>Mas reciente</option>
-                    <option value='older'>Mas antiguo</option>
+                    <option value='most_recent'>Más reciente</option>
+                    <option value='older'>Más antiguo</option>
                 </select>
             </div>
             <div class="overflow-auto h-full pb-5">

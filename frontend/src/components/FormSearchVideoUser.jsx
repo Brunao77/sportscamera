@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'preact/hooks'
 import { getLastDays } from '../utils'
+import Select from './Select.jsx'
 
 export default function FormSearchVideoUser({establishment_id}) {
     const [selects, setSelects] = useState({field: {value:'', options: []}, date: {value:'', options: []}, hour: {value:'', options: []}})
@@ -50,27 +51,11 @@ export default function FormSearchVideoUser({establishment_id}) {
     return (
         <>
             <form class="flex flex-col z-0 gap-3 w-full" onSubmit={handleSubmit}>
-                <select required disabled={!selects.field.options.length} onChange={handleChangeField} value={selects.field.value} class="border w-full border-primary disabled:border-gray-200 border-2 outline-none cursor-pointer rounded-lg p-2 focus:ring-primary focus:border-primary">
-                    <option hidden value=''>Cancha</option>
-                    {selects.field.options && selects.field.options.map(({value, text})=>{
-                        return <option value={value}>{text}</option>
-                    })}
-                </select>
-                <select required disabled={!selects.field.value} onChange={handleChangeDate} value={selects.date.value} class="border w-full border-primary disabled:border-gray-200 border-2 outline-none cursor-pointer rounded-lg p-2 focus:ring-primary focus:border-primary">
-                    <option hidden value=''>Dia</option>
-                    {selects.date.options && selects.date.options.map(({value, text})=>{
-                        return <option value={value}>{text}</option>
-                    })}
-                </select>
-                <select required disabled={!selects.hour.options.length} value={selects.hour.value} onChange={handleChangeHour} class="border w-full border-primary disabled:border-gray-200 border-2 outline-none cursor-pointer rounded-lg p-2 focus:ring-primary focus:border-primary">
-                    <option hidden value=''>Hora</option>
-                    {selects.hour.options.length ? selects.hour.options.map(({value, text})=>{
-                        return <option value={value}>{text}</option>
-                    }) : <option disabled>No hay turnos para este dia</option>}
-                </select>
+                <Select placeholder='Cancha' disabled={!selects.field.options.length} option={selects.field} onChange={handleChangeField} />
+                <Select placeholder='Día' disabled={!selects.field.value} option={selects.date} onChange={handleChangeDate} />
+                <Select placeholder='Hora' disabled={!selects.hour.options.length} option={selects.hour} onChange={handleChangeHour} />
                 <button type='submit' class="flex items-center justify-center cursor-pointer rounded-2xl bg-primary border text-white text-l text-regular p-3 px-5 disabled:bg-primary_disabled">BUSCAR</button>
             </form>
-            
         </>
     )
   }

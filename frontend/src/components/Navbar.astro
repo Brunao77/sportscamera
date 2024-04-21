@@ -11,7 +11,12 @@ const { establishment_id } = user
 const establishment = await EstablishmentModel.getOne({establishment_id})
 ---
 
-<aside class="bg-primary hidden md:flex flex-col justify-between w-72 p-4 color-white rounded-l-xl text-white">
+<button class="absolute top-0 left-2 md:hidden rounded-xl text-primary container" onclick="myFunction(this)">
+    <div class="bar1"></div>
+    <div class="bar2"></div>
+    <div class="bar3"></div>
+</button>
+<aside class="bg-primary abosulte h-screen hidden md:flex flex-col justify-between md:w-72 p-4 color-white md:rounded-l-xl text-white" id="navbar">
     <ul>
         <li>
             <a class="w-full flex gap-2 hover:bg-[#a262a3] rounded-xl py-3 px-1" href="/video-list">
@@ -37,3 +42,31 @@ const establishment = await EstablishmentModel.getOne({establishment_id})
         <span class="text-2xl">{establishment.name}</span>
     </div>
 </aside>
+<script is:inline>
+    function myFunction(x) {
+        x.classList.toggle("change");
+        document.getElementById('navbar').classList.remove('hidden')
+    }
+</script>
+<style>
+    .container {
+        display: inline-block;
+        cursor: pointer;
+    }
+    .bar1, .bar2, .bar3 {
+        width: 30px;
+        height: 5px;
+        background-color: var(--color-primary);
+        margin: 6px 0;
+        transition: 0.4s;
+    }
+    .change .bar1 {
+        background-color: var(--color-white);
+        transform: translate(0, 11px) rotate(-45deg);
+    }
+    .change .bar2 {opacity: 0;}
+    .change .bar3 {
+        background-color: var(--color-white);
+        transform: translate(0, -11px) rotate(45deg);
+    }
+</style>

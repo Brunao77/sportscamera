@@ -7,6 +7,8 @@ import { CameraModel } from "../models/camera";
 import Button from "../components/Button.astro";
 import Establishment from "../icons/Establishment.astro";
 import Camera from "../icons/Camera.astro";
+import Address from "../icons/Address.astro";
+import Phone from "../icons/Phone.astro";
 
 const user = Astro.locals.user;
 if (!user) {
@@ -23,25 +25,37 @@ const cameras = await CameraModel.getAll({establishment_id});
 
 <Layout title="SportsCamera!">
 	<Navbar />
-	<section class="bg-white h-full w-full md:rounded-r-xl text-center">
+	<section class="bg-white h-full md:rounded-r-xl text-center z-0 max-w-4xl">
 		<strong class="font-medium text-2xl md:text-3xl text-primary text-nowrap">Configuracion</strong>
         <form method="POST" class="text-start p-3">
             <strong class="text-primary text-2xl font-medium">Establecimiento</strong>
-            <div class="flex flex-wrap justify-between my-2 gap-4">
+            <div class="flex flex-wrap my-2 gap-4">
                 <label>
                     Nombre
-                    <Input placeholder="Nombre" value={establishment.name} type="text" required>
+                    <Input placeholder="Nombre" name="name" value={establishment.name} type="text" required>
                         <Establishment />
                     </Input>
                 </label>
                 {cameras.map((camera, index)=>{
                     return <label>
                         Nombre cámara {index+1}
-                        <Input type="text" placeholder={`Camara ${index+1}`} value={camera.field_name} required>
+                        <Input type="text" placeholder={`Camara ${index+1}`} name={`camera_${index+1}`} value={camera.field_name} required>
                             <Camera />
                         </Input>
                     </label>
                 })}
+                <label>
+                    Dirección
+                    <Input placeholder="Dirección" name="address" value={establishment.address} type="text" required>
+                        <Address />
+                    </Input>
+                </label>
+                <label>
+                    Teléfono
+                    <Input placeholder="Teléfono" name="phone" value={establishment.phone} type="text">
+                        <Phone />
+                    </Input>
+                </label>
             </div>
             <div class="flex md:justify-end mt-5 gap-5">
                 <Button id="logout_btn" bg="red-500">CERRAR SESION</Button>

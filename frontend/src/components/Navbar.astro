@@ -11,27 +11,27 @@ const { establishment_id } = user
 const establishment = await EstablishmentModel.getOne({establishment_id})
 ---
 
-<button class="absolute top-0 left-2 md:hidden rounded-xl text-primary container" onclick="myFunction(this)">
+<button class="absolute top-0 left-2 z-20 md:hidden rounded-xl text-primary container" onclick="myFunction(this)">
     <div class="bar1"></div>
     <div class="bar2"></div>
     <div class="bar3"></div>
 </button>
-<aside class="bg-primary abosulte h-screen hidden md:flex flex-col justify-between md:w-72 p-4 color-white md:rounded-l-xl text-white" id="navbar">
+<aside class="bg-primary absolute top-0 left-0 h-screen w-full z-10 text-white flex flex-col p-10 justify-between text-2xl hidden md:static md:flex md:h-full md:w-72 md:rounded-l-xl md:p-4 md:text-xl" id="navbar">
     <ul>
         <li>
-            <a class="w-full flex gap-2 hover:bg-[#a262a3] rounded-xl py-3 px-1" href="/video-list">
+            <a class="w-full flex gap-2 hover:bg-[#a262a3] rounded-xl py-3 px-1 text-nowrap items-center" href="/video-list">
                 <BulletList />
                 <span>Lista de videos</span>
             </a>
         </li>
         <li>
-            <a class="w-full flex gap-2 hover:bg-[#a262a3] rounded-xl py-3 px-1" href="/video-list">
+            <a class="w-full flex gap-2 hover:bg-[#a262a3] rounded-xl py-3 px-1 text-nowrap items-center" href="/video-list">
                 <CameraWhite />
                 <span>Grabar</span>
             </a>
         </li>
         <li>
-            <a class="w-full flex gap-2 hover:bg-[#a262a3] rounded-xl py-3 px-1" href="/config">
+            <a class="w-full flex gap-2 hover:bg-[#a262a3] rounded-xl py-3 px-1 text-nowrap items-center" href="/config">
                 <Settings />
                 <span>Configuracion</span>
             </a>
@@ -45,8 +45,13 @@ const establishment = await EstablishmentModel.getOne({establishment_id})
 <script is:inline>
     function myFunction(x) {
         x.classList.toggle("change");
-        document.getElementById('navbar').classList.remove('hidden')
+        if(!x.classList.contains("change")){
+            return document.getElementById('navbar').classList.add('hidden')
+        }
+        return document.getElementById('navbar').classList.remove('hidden')
+
     }
+    //class="bg-primary absoulte top-0 left-0 md:static h-screen md:h-full hidden md:flex flex-col justify-between md:w-72 p-4 color-white md:rounded-l-xl text-white"
 </script>
 <style>
     .container {
@@ -68,5 +73,10 @@ const establishment = await EstablishmentModel.getOne({establishment_id})
     .change .bar3 {
         background-color: var(--color-white);
         transform: translate(0, -11px) rotate(45deg);
+    }
+    @media (min-width: 768px) {
+        .container {
+            display: none;
+        }
     }
 </style>

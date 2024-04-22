@@ -17,7 +17,6 @@ if (!establishment_id){
     return Astro.redirect("/sign-in");
 }
 const videos = await VideosModel.getAll({ establishment_id });
-
 ---
 
 <Layout title="SportsCamera!">
@@ -27,7 +26,7 @@ const videos = await VideosModel.getAll({ establishment_id });
         <section class="video_list w-full md:w-[450px] h-full overflow-hidden">
             <ListVideos videos={videos} client:visible />
         </section>
-        <section class="filter flex flex-col gap-2 w-full">
+        <section class="filter flex flex-col gap-2 w-full md:w-[200px]">
             <strong class="text-start text-xl text-primary font-medium text-nowrap">Buscar video</strong>
             {videos ? <FormSearchVideoUser establishment_id={establishment_id} client:visible /> : <span>No hay videos</span>}
         </section>

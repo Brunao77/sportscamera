@@ -47,8 +47,7 @@ export default function VideoList({videos}) {
                     )
                 })}
            </div>
-           {videoForDelete && <ModalForDelete listVideos={listVideos} setListVideos={setListVideos} videoForDelete={videoForDelete} setVideoForDelete={setVideoForDelete} />
-            }
+           {videoForDelete && <ModalForDelete listVideos={listVideos} setListVideos={setListVideos} videoForDelete={videoForDelete} setVideoForDelete={setVideoForDelete} />}
         </>
     )
 }

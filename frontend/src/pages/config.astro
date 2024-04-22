@@ -17,9 +17,53 @@ if (!user) {
 
 const { establishment_id } = user
 
+
 const establishment = await EstablishmentModel.getOne({ establishment_id })
 
 const cameras = await CameraModel.getAll({establishment_id});
+
+const errors = { name: "", cameras: [], address: "" };
+const updateData = { name: "", cameras: [], address: "", phone:""};
+if(Astro.request.method === 'POST'){
+    try {
+		const data = await Astro.request.formData();
+		const name = data.get("name");
+        const address = data.get("address");
+        const phone = data.get("phone");
+        const camerasData = [];
+        data.forEach((value, key) => {
+            if(key.startsWith('camera_')){
+                if(!value) errors.cameras.push('Cámara requerida')
+                camerasData.push(value);
+            }
+        })
+
+        if(!name)
+            errors.name += 'Nombre requerido'
+        if(!address)
+            errors.address += 'Dirección requerida'
+
+        const hasErrors = Object.values(errors).some(msg => {
+            if (Array.isArray(msg)) {
+                return msg.length > 0;
+            }
+            return !!msg;
+        })
+        if(!hasErrors){
+            await EstablishmentModel.update({ establishment_id, name, address, phone })
+            updateData.name += name
+            updateData.address += address
+            updateData.phone += phone
+            cameras.forEach(async ({camera_id}, index)=>{
+                const field_name = camerasData[index]
+                updateData.cameras.push(field_name)
+                await CameraModel.updateName({ camera_id, field_name })
+            })
+        }
+	} catch (error) {
+		console.error(error);
+	}
+}
 
 ---
 
@@ -27,38 +71,41 @@ const cameras = await CameraModel.getAll({establishment_id});
 	<Navbar />
 	<section class="bg-white h-full md:rounded-r-xl text-center z-0 max-w-4xl">
 		<strong class="font-medium text-2xl md:text-3xl text-primary text-nowrap">Configuracion</strong>
-        <form method="POST" class="text-start p-3">
+        <form method="POST"  class="text-start p-3">
             <strong class="text-primary text-2xl font-medium">Establecimiento</strong>
             <div class="flex flex-wrap my-2 gap-4">
                 <label>
                     Nombre
-                    <Input placeholder="Nombre" name="name" value={establishment.name} type="text" required>
+                    <Input placeholder="Nombre" name="name" value={updateData.name ? updateData.name : establishment.name} type="text" required>
                         <Establishment />
                     </Input>
+                    {errors.name && <span class="text-red-500 text-md">{errors.name}</span>}
                 </label>
-                {cameras.map((camera, index)=>{
+                {cameras.map(({field_name}, index)=>{
                     return <label>
                         Nombre cámara {index+1}
-                        <Input type="text" placeholder={`Camara ${index+1}`} name={`camera_${index+1}`} value={camera.field_name} required>
+                        <Input type="text" placeholder={`Camara ${index+1}`} name={`camera_${index+1}`} value={updateData.cameras[index] ? updateData.cameras[index] : field_name} required>
                             <Camera />
                         </Input>
+                        {errors.cameras[index] && <span class="text-red-500 text-md">{errors.cameras[index]}</span>}
                     </label>
                 })}
                 <label>
                     Dirección
-                    <Input placeholder="Dirección" name="address" value={establishment.address} type="text" required>
+                    <Input placeholder="Dirección" name="address" value={updateData.address ? updateData.address : establishment.address} type="text" required>
                         <Address />
                     </Input>
+                    {errors.address && <span class="text-red-500 text-md">{errors.address}</span>}
                 </label>
                 <label>
-                    Teléfono
-                    <Input placeholder="Teléfono" name="phone" value={establishment.phone} type="text">
+                    Teléfono (ej: 3114681299)
+                    <Input placeholder="Teléfono" name="phone" value={updateData.phone ? updateData.phone : establishment.phone} type="tel" pattern="[0-9]*" maxlength=20>
                         <Phone />
                     </Input>
                 </label>
             </div>
             <div class="flex md:justify-end mt-5 gap-5">
-                <Button id="logout_btn" bg="red-500">CERRAR SESION</Button>
+                <Button id="logout_btn" bg="red-400">CERRAR SESION</Button>
                 <Button type="submit">GUARDAR CAMBIOS</Button>
             </div>
         </form>

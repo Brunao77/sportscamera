@@ -13,16 +13,15 @@ export class CameraModel {
       console.log(error);
     }
   }
-  static async getByName({ establishment_id, field_name }) {
-    // GET CAMERA IN THE ESTABLISHMENT FOR THE FIELD
+  static async updateName({ camera_id, field_name }) {
     try {
-      const field_name_lower = field_name.toLowerCase();
       const { rows } = await pool.query(
-        "SELECT * FROM cameras WHERE establishment_id = $1 AND LOWER(field_name) = $2",
-        [establishment_id, field_name_lower]
+        `UPDATE cameras
+        SET field_name = $1
+        WHERE camera_id = $2`,
+        [field_name, camera_id]
       );
-      console.log(rows);
-      return rows[0];
+      return rows;
     } catch (error) {
       console.log(error);
     }

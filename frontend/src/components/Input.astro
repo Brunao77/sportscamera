@@ -1,8 +1,8 @@
 ---
-const { placeholder, type, required, minlength, name, value  } = Astro.props;
+const { placeholder, type, required, minlength, name, value, maxlength, pattern } = Astro.props;
 ---
 
 <div class="relative">
 	<slot />
-	<input type={type} minlength={minlength} name={name} value={value} required={required} class="bg-white border-primary border-2 outline-0 px-10 py-3 text-terciary rounded-xl placeholder-terciary disabled:border-primary_disabled" placeholder={placeholder}></input>
+	<input type={type} minlength={minlength} maxlength={maxlength} name={name} value={value} required={required} pattern={pattern} class={`bg-white border-primary border-2 outline-0 px-10 py-3 text-${value ? 'black' : 'terciary'} rounded-xl placeholder-terciary disabled:border-primary_disabled`} placeholder={placeholder}></input>
 </div>

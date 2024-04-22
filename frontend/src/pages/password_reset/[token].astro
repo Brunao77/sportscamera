@@ -5,8 +5,52 @@ import Button from "../../components/Button.astro"
 import Password from "../../icons/Password.astro"
 import Success from "../../components/Success.astro"
 import Error from "../../components/Error.astro"
+import { isWithinExpirationDate } from "oslo";
+import { sha256 } from "oslo/crypto";
+import { encodeHex } from "oslo/encoding";
+import { PasswordResetModel } from "../../models/password_reset.js";
+import { lucia } from "../../auth.ts";
+import bcrypt from "bcrypt";
+import { UserModel } from "../../models/user.js";
 
 const { token } = Astro.params
+
+let error = ''
+let success = ''
+if(Astro.request.method === 'POST'){
+	try {
+		const data = await Astro.request.formData();
+		const password = data.get("password");
+
+		if(!password){
+			error = "Los campos son requeridos"
+		}
+		else{
+			const tokenHash = encodeHex(await sha256(new TextEncoder().encode(token)));
+			const tokenRow = await PasswordResetModel.findTokenHash({ token_hash: tokenHash})
+
+			if(tokenRow){
+				await PasswordResetModel.deleteTokenHash({ token_hash: tokenHash })
+			}
+
+			if (!tokenRow || !isWithinExpirationDate(tokenRow.expires_at)){
+				error = 'Token invalido'
+			}
+			else{
+				await lucia.invalidateUserSessions(tokenRow.user_id);
+				const hashedPassword = await bcrypt.hash(password, 12);
+				await UserModel.updatePassword({ password: hashedPassword, user_id: tokenRow.user_id })
+
+				const session = await lucia.createSession(tokenRow.user_id, {});
+				const sessionCookie = lucia.createSessionCookie(session.id);
+				success = "Contraseña reestablecida con exito"
+				Astro.cookies.set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes)
+			}
+		}
+	} catch (error) {
+		console.error(error);
+	}
+}
 ---
 
 <Layout>
@@ -16,84 +60,12 @@ const { token } = Astro.params
         <Input placeholder="Contraseaña" name="password" id="password_inp" minlength="5" required>
             <Password />
         </Input>
-        <span class="text-center text-red-500 text-sm hidden" id="errorSpan"></span>
+        {error === "Los campos son requeridos" && <span class="text-center text-red-500 text-sm " id="errorSpan">{error}</span>}
         <Button type="submit" id="change_password_btn">
             <span id="content_btn">CAMBIAR CONTRASEÑA</span>
             <div class='w-6 h-6 border-4 border-ice border-l-transparent rounded-full animate-spin hidden' id="spinner"></div>
         </Button>
     </form>
-	<Success message="Contraseña reestablecida" hidden={true}/>
-	<Error message="Token invalido" hidden={true}/>
-	<script is:inline define:vars={{ token }}>
-	
-		document.addEventListener('astro:page-load', () => {
-
-			const form = document.getElementById('change_password')
-
-			form.addEventListener('submit', async function(event){
-				event.preventDefault();
-	
-				const loginBtn = document.getElementById('change_password_btn')
-				const buttonContent = document.getElementById('content_btn');
-				const spinner = document.getElementById('spinner');
-				
-				loginBtn.disabled = true
-	
-				buttonContent.classList.add('hidden');
-				spinner.classList.remove('hidden');
-				
-				const formData = new FormData(this);
-				
-				const formDataObject = {};
-				formData.forEach((value, key) => {
-					formDataObject[key] = value;
-				});
-	
-				const inputs = form.querySelectorAll('input');
-				inputs.forEach(function(input) {
-					input.disabled = true;
-				});			
-	
-				try {
-					const response = await fetch(`/api/reset-password/${token}`, {
-						method: 'POST',
-						body: JSON.stringify(formDataObject)
-					});
-					if (response.ok) {
-						const successToast = document.getElementById('success_toast')
-						successToast.classList.remove('hidden');
-						setTimeout(() => {
-							window.location.href = response.headers.get('Location')
-						}, 2000);
-						
-					}else {
-						if(response.status === 401){
-							console.log('asdas')
-							const errorToast = document.getElementById('error_toast')
-							errorToast.classList.remove('hidden');
-							setTimeout(() => {
-								window.location.href = response.headers.get('Location')
-							}, 2000);
-						}
-
-						const res = await response.json()
-
-						const errorSpan = document.getElementById('errorSpan');
-						errorSpan.textContent = res.message
-						errorSpan.classList.remove('hidden');
-	
-						inputs.forEach(function(input) {
-							input.disabled = false;
-						});
-	
-						loginBtn.disabled = false
-						spinner.classList.add('hidden');
-						buttonContent.classList.remove('hidden');
-					}
-				} catch (error) {
-					console.error('Error en la solicitud:', error);
-				}
-			});
-		}, { once: true })
-	</script>
+	{success && <Success message={success} redirect="/" />}
+	{error === 'Token invalido'  && <Error message={error} redirect="/" />}
 </Layout>

@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'preact/hooks'
 import { getLastDays } from '../utils'
 import Select from './Select.jsx'
+import ModalSearch from './ModalSearch.jsx'
 
 export default function FormSearchVideoUser({establishment_id}) {
     const [selects, setSelects] = useState({field: {value:'', options: []}, date: {value:'', options: []}, hour: {value:'', options: []}})
-    const [videosList, setVideoList] = useState(null)
+    const [listVideos, setListVideos] = useState(null)
+    const [selectedVideo, setSelectedVideo] = useState(null)
 
     useEffect(async ()=>{
         const dates = getLastDays()
@@ -28,7 +30,7 @@ export default function FormSearchVideoUser({establishment_id}) {
         }).then((response) =>
 			response.json()
 		);
-        setVideoList(videos)
+        setListVideos(videos)
         const turnsOptions = videos.map(({start_time, end_time})=>{
             return {value: `${start_time}-${end_time}` , text: `${start_time.slice(0, -3)} - ${end_time.slice(0, -3)}`}
         })
@@ -43,9 +45,10 @@ export default function FormSearchVideoUser({establishment_id}) {
     const handleSubmit = (event)=>{
         event.preventDefault();
 
-        const selectedVideo = [...videosList].find(({start_time, end_time}) => {
+        const searchedVideo = [...listVideos].find(({start_time, end_time}) => {
             return `${start_time}-${end_time}` ===  selects.hour.value
         })
+        setSelectedVideo(searchedVideo)
     }
   
     return (
@@ -56,6 +59,7 @@ export default function FormSearchVideoUser({establishment_id}) {
                 <Select placeholder='Hora' disabled={!selects.hour.options.length} option={selects.hour} onChange={handleChangeHour} />
                 <button type='submit' class="flex items-center justify-center cursor-pointer rounded-2xl bg-primary border text-white text-l text-regular p-3 px-5 disabled:bg-primary_disabled">BUSCAR</button>
             </form>
+            {selectedVideo && <ModalSearch selectedVideo={selectedVideo} setSelectedVideo={setSelectedVideo} />}
         </>
     )
   }

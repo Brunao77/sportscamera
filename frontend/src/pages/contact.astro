@@ -26,7 +26,7 @@ if(Astro.request.method === 'POST'){
             const mailOptions = {
                 from: email,
                 to: import.meta.env.EMAIL,
-                subject: 'Form Contact',
+                subject: 'Form Contact - ' + email,
                 text: message,
             };
             transporter.sendMail(mailOptions, (error) => {
@@ -36,9 +36,7 @@ if(Astro.request.method === 'POST'){
         }
 
 	} catch (error) {
-		if (error instanceof Error) {
 		console.error(error.message);
-		}
 	}
 }
 ---

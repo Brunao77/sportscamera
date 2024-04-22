@@ -1,6 +1,7 @@
 ---
 import BulletList from "../icons/BulletList.astro";
 import CameraWhite from "../icons/CameraWhite.astro";
+import Logout from "../icons/Logout.astro";
 import Settings from "../icons/Settings.astro";
 import User from "../icons/User.astro";
 import { EstablishmentModel } from "../models/establishment.js";
@@ -11,7 +12,7 @@ const { establishment_id } = user
 const establishment = await EstablishmentModel.getOne({establishment_id})
 ---
 
-<button class="absolute top-0 left-2 z-20 md:hidden rounded-xl text-primary container" onclick="myFunction(this)">
+<button class="absolute top-0 left-2 z-20 md:hidden rounded-xl text-primary container" onclick="navbarToggleIcon(this)">
     <div class="bar1"></div>
     <div class="bar2"></div>
     <div class="bar3"></div>
@@ -37,21 +38,32 @@ const establishment = await EstablishmentModel.getOne({establishment_id})
             </a>
         </li>
     </ul>
-    <div class="flex gap-2 items-center">
+    <div class="flex gap-2 items-center hover:bg-[#a262a3] w-full rounded-xl py-3 px-1 relative" onclick="logoutToggleIcon(this)">
         <User />
         <span class="text-2xl truncate max-w-48">{establishment.name}</span>
+        <button class="hidden absolute left-48" id="logout_btn" onclick="logout()"><Logout /></button>
     </div>
 </aside>
 <script is:inline>
-    function myFunction(x) {
+    function navbarToggleIcon(x) {
         x.classList.toggle("change");
         if(!x.classList.contains("change")){
             return document.getElementById('navbar').classList.add('hidden')
         }
         return document.getElementById('navbar').classList.remove('hidden')
-
     }
-    //class="bg-primary absoulte top-0 left-0 md:static h-screen md:h-full hidden md:flex flex-col justify-between md:w-72 p-4 color-white md:rounded-l-xl text-white"
+    function logoutToggleIcon(x) {
+        x.querySelector('#logout_btn').classList.toggle("hidden");
+    }
+    async function logout(x) {
+        const response = await fetch('api/user/logout', {
+            method:'POST',
+            headers: {
+				'Content-Type': 'application/json'
+			},
+        })
+        if(response.ok) window.location.href = response.headers.get('Location')
+    }
 </script>
 <style>
     .container {

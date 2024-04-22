@@ -105,20 +105,8 @@ if(Astro.request.method === 'POST'){
                 </label>
             </div>
             <div class="flex md:justify-end mt-5 gap-5">
-                <Button id="logout_btn" bg="red-400">CERRAR SESION</Button>
                 <Button type="submit">GUARDAR CAMBIOS</Button>
             </div>
         </form>
 	</section>
-    <script>
-        document.getElementById('logout_btn').addEventListener('click',async ()=>{
-            const response = await fetch('api/user/logout', {
-                method:'POST',
-                headers: {
-					'Content-Type': 'application/json'
-				},
-            })
-            if(response.ok) window.location.href = response.headers.get('Location')
-        })
-    </script>
 </Layout>

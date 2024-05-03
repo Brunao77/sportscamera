@@ -41,7 +41,6 @@ if(Astro.request.method === 'POST'){
 				return Astro.redirect("/video-list");
 			}
 		}
-		console.log({error})
 	} catch (error) {
 		if (error instanceof Error) {
 		console.error(error.message);

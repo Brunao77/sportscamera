@@ -10,6 +10,7 @@
     "astro": "astro"
   },
   "dependencies": {
+    "@astrojs/cloudflare": "^10.2.5",
     "@astrojs/preact": "^3.2.0",
     "@astrojs/tailwind": "^5.1.0",
     "@lucia-auth/adapter-postgresql": "^3.1.2",

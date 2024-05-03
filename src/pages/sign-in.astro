@@ -27,18 +27,21 @@ if(Astro.request.method === 'POST'){
 		
 		if (!user)
 			error = 'Credenciales incorrectas'
-			
-		const checkPassword = await bcrypt.compare(password, user.password);
 
-		if (!checkPassword)
-			error = 'Credenciales incorrectas'
+		if(!error){
+			const checkPassword = await bcrypt.compare(password, user.password);
 
-		const session = await lucia.createSession(user.user_id, {});
-		const sessionCookie = lucia.createSessionCookie(session.id);
-		Astro.cookies.set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes)
+			if (!checkPassword)
+				error = 'Credenciales incorrectas'
+			else{
+				const session = await lucia.createSession(user.user_id, {});
+				const sessionCookie = lucia.createSessionCookie(session.id);
+				Astro.cookies.set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes)
 
-		if(!error)
-			return Astro.redirect("/video-list");
+				return Astro.redirect("/video-list");
+			}
+		}
+		console.log({error})
 	} catch (error) {
 		if (error instanceof Error) {
 		console.error(error.message);
@@ -47,7 +50,7 @@ if(Astro.request.method === 'POST'){
 }
 ---
 
-<Layout title="SportsCamera!">
+<Layout title="Login / SportsCamera!">
 	<section class="bg-white md:px-32 h-full md:rounded-l-xl md:rounded-br-none flex flex-col gap-5 items-center justify-center px-20 py-20">
 		<strong class="text-5xl text-primary font-medium text-nowrap">Iniciar sesión</strong>
 		<form method="POST" class="flex flex-col gap-4" id="loginForm">
@@ -57,7 +60,7 @@ if(Astro.request.method === 'POST'){
 			<Input placeholder="Contraseña" name='password' required type="password" minlength="5">
 				<Password />
 			</Input>
-			<span class="text-center text-red-500 text-sm hidden" id="errorSpan"></span>
+			{error && <span class="text-center text-red-500 text-sm" id="errorSpan">{error}</span>}
 			<Button type="submit" id="login_btn">
 				<span id="content_btn">INICIAR SESION</span>
 				<div class='w-6 h-6 border-4 border-ice border-l-transparent rounded-full animate-spin hidden' id="spinner"></div>
@@ -71,63 +74,4 @@ if(Astro.request.method === 'POST'){
 		<p class="m-0 font-light text-l w-3/4">Servicio de grabacion en establecimientos deportivos</p>
 		<a class="rounded-2xl border p-3" href="/">BUSCAR VIDEO</a>
 	</section>
-	<script is:inline>
-		document.addEventListener('astro:page-load', () => {
-			const form = document.getElementById('loginForm')
-			form.addEventListener('submit', async function(event){
-				event.preventDefault();
-	
-				const loginBtn = document.getElementById('login_btn');
-				const buttonContent = document.getElementById('content_btn');
-				const spinner = document.getElementById('spinner');
-	
-				
-				loginBtn.disabled = true
-	
-				buttonContent.classList.add('hidden');
-				spinner.classList.remove('hidden');
-				
-				const formData = new FormData(this);
-	
-				const formDataObject = {};
-				formData.forEach((value, key) => {
-					formDataObject[key] = value;
-				});
-	
-				const inputs = form.querySelectorAll('input');
-				inputs.forEach(function(input) {
-					input.disabled = true;
-				});
-				
-	
-				try {
-					const response = await fetch('/api/user/login', {
-						method: 'POST',
-						headers: {
-							'Content-Type': 'application/json'
-						},
-						body: JSON.stringify(formDataObject)
-					});
-					if (response.status === 200) {
-						window.location.href = '/video-list';
-						
-					} else {
-						const res = await response.json()
-						const errorSpan = document.getElementById('errorSpan');
-						errorSpan.textContent = res.message
-						errorSpan.classList.remove('hidden');
-						inputs.forEach(function(input) {
-							input.disabled = false;
-						});
-						loginBtn.disabled = false
-	
-						spinner.classList.add('hidden');
-						buttonContent.classList.remove('hidden');
-					}
-				} catch (error) {
-					console.error('Error en la solicitud:', error);
-				}
-			});
-		}, { once: true })
-	</script>
 </Layout>

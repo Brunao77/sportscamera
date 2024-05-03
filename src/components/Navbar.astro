@@ -55,7 +55,7 @@ const establishment = await EstablishmentModel.getOne({establishment_id})
     function logoutToggleIcon(x) {
         x.querySelector('#logout_btn').classList.toggle("hidden");
     }
-    async function logout(x) {
+    async function logout() {
         const response = await fetch('api/user/logout', {
             method:'POST',
             headers: {

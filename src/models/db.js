@@ -1,9 +1,7 @@
 import pg from "pg";
 
+const { PGCONNECTIONSTRING } = import.meta.env;
+
 export const pool = new pg.Pool({
-  host: "localhost",
-  port: 5432,
-  database: "sportscamera",
-  user: "postgres",
-  password: import.meta.env.DB_PASSWORD,
+  connectionString: PGCONNECTIONSTRING,
 });

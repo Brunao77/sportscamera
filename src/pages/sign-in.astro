@@ -6,7 +6,7 @@ import Email from '../icons/Email.astro';
 import Password from '../icons/Password.astro';
 import { lucia } from "../auth.ts";
 import { UserModel } from "../models/user.js"
-import bcrypt from "bcrypt";
+import { Argon2id  } from "oslo/password";
 
 const user = Astro.locals.user;
 if (user) {
@@ -29,7 +29,9 @@ if(Astro.request.method === 'POST'){
 			error = 'Credenciales incorrectas'
 
 		if(!error){
-			const checkPassword = await bcrypt.compare(password, user.password);
+			const argon2id = new Argon2id();
+	
+			const checkPassword = await argon2id.verify(user.password, password);
 
 			if (!checkPassword)
 				error = 'Credenciales incorrectas'

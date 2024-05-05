@@ -1,0 +1,52 @@
+---
+import Navbar from "../components/Navbar.astro";
+import Layout from "../layouts/Layout.astro";
+import { CameraModel } from "../models/camera";
+
+const user = Astro.locals.user;
+if (!user) {
+	return Astro.redirect("/sign-in");
+}
+
+const { establishment_id } = user
+
+const cameras = await CameraModel.getAll({establishment_id});
+
+const response = await fetch('http://localhost:3000/hello')
+console.log(await response.text())
+---
+
+<Layout title="SportsCamera!">
+    <Navbar />
+    <section class="bg-white h-full md:rounded-r-xl text-center z-0 max-w-4xl w-[5000px]">
+		<strong class="font-medium text-2xl md:text-3xl text-primary text-nowrap">Grabar</strong>
+        <div class="grid grid-cols-2 gap-2 p-5">
+            {cameras && ["","","",""].map((camera)=>{
+                return <div class="flex flex-col w-full">
+                    <video id="video" autoplay controls></video>
+                    <div class="flex items-center gap-2 bg-black p-2">
+                        <button class="border-none cursor-pointer  w-6 h-6 rounded-full bg-[#646464]" data-state="record"></button>
+                        <span class="text-[#646464]">Grabando</span>
+                        <button id="stream_btn">Cargar stream</button>
+                    </div>
+                </div>
+            })}
+        </div>
+	</section>
+    <script is:inline src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script is:inline>
+        document.addEventListener('astro:page-load', () => {
+            if (Hls.isSupported()) {
+                const video = document.getElementById('video');
+                const hls = new Hls();
+                hls.attachMedia(video);
+                hls.on(Hls.Events.MEDIA_ATTACHED, function () {
+                    hls.loadSource("http://localhost:3000/192.168.0.64/output.m3u8");
+                    hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
+                        console.log("manifest loaded, found " + data.levels.length + " quality level");
+                    });
+                });
+            }
+        }, { once: true });
+    </script>
+</Layout>

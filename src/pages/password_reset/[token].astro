@@ -10,8 +10,8 @@ import { sha256 } from "oslo/crypto";
 import { encodeHex } from "oslo/encoding";
 import { PasswordResetModel } from "../../models/password_reset.js";
 import { lucia } from "../../auth.ts";
-import bcrypt from "bcrypt";
 import { UserModel } from "../../models/user.js";
+import { Argon2id } from "oslo/password";
 
 const { token } = Astro.params
 
@@ -38,7 +38,8 @@ if(Astro.request.method === 'POST'){
 			}
 			else{
 				await lucia.invalidateUserSessions(tokenRow.user_id);
-				const hashedPassword = await bcrypt.hash(password, 12);
+				const argon2id = new Argon2id();
+				const hashedPassword = await argon2id.hash(password);
 				await UserModel.updatePassword({ password: hashedPassword, user_id: tokenRow.user_id })
 
 				const session = await lucia.createSession(tokenRow.user_id, {});

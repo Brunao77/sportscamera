@@ -15,7 +15,24 @@ export default defineConfig({
   adapter: cloudflare(),
   vite: {
     ssr: {
-      external: ["node:crypto", "events", "util"],
+      external: [
+        "node:crypto",
+        "events",
+        "util",
+        "url",
+        "net",
+        "dns",
+        "crypto",
+        "fs",
+        "os",
+        "child_process",
+        "http",
+        "https",
+        "zlib",
+        "stream",
+        "tls",
+        "path",
+      ],
     },
   },
 });

@@ -16,6 +16,7 @@ export default defineConfig({
   vite: {
     ssr: {
       external: ["node:crypto"], // Exclude node:crypto from external modules
+      noExternal: ["events"],
     },
   },
 });

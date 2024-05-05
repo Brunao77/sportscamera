@@ -15,7 +15,7 @@ export default defineConfig({
   adapter: cloudflare(),
   vite: {
     ssr: {
-      external: ["node:buffer"],
+      noExternal: ["node:crypto"], // Exclude node:crypto from external modules
     },
   },
 });

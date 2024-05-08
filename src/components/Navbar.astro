@@ -1,6 +1,7 @@
 ---
 import BulletList from "../icons/BulletList.astro";
 import CameraWhite from "../icons/CameraWhite.astro";
+import Cash from "../icons/Cash.astro";
 import Logout from "../icons/Logout.astro";
 import Settings from "../icons/Settings.astro";
 import User from "../icons/User.astro";
@@ -17,7 +18,7 @@ const establishment = await EstablishmentModel.getOne({establishment_id})
     <div class="bar2"></div>
     <div class="bar3"></div>
 </button>
-<aside class="bg-primary absolute top-0 left-0 h-screen w-full z-10 text-white flex flex-col p-10 justify-between text-2xl hidden md:static md:flex md:h-full md:w-fit md:rounded-l-xl md:p-4 md:pr-16 md:text-xl" id="navbar">
+<aside class="bg-primary absolute top-0 left-0 h-screen w-full z-10 text-white flex flex-col p-10 justify-between text-2xl hidden md:static md:flex md:h-full md:w-[250px] md:rounded-l-xl md:p-4  md:text-xl" id="navbar">
     <ul>
         <li>
             <a class="w-full flex gap-2 hover:bg-[#a262a3] rounded-xl py-3 px-1 text-nowrap items-center" href="/video-list">
@@ -37,11 +38,17 @@ const establishment = await EstablishmentModel.getOne({establishment_id})
                 <span>Configuracion</span>
             </a>
         </li>
+        <li>
+            <a class="w-full flex gap-2 hover:bg-[#a262a3] rounded-xl py-3 px-1 text-nowrap items-center" href="/payment">
+                <Cash />
+                <span>Pago</span>
+            </a>
+        </li>
     </ul>
-    <div class="flex gap-2 items-center hover:bg-[#a262a3] w-full rounded-xl py-3 px-1 relative" onclick="logoutToggleIcon(this)">
+    <div class="flex gap-2 items-center  w-full rounded-xl py-3 px-1 relative">
         <User />
         <span class="text-2xl truncate max-w-48">{establishment.name}</span>
-        <button class="hidden absolute left-48" id="logout_btn" onclick="logout()"><Logout /></button>
+        <button class="absolute left-48" id="logout_btn" onclick="logout()"><Logout /></button>
     </div>
 </aside>
 <script is:inline>
@@ -51,9 +58,6 @@ const establishment = await EstablishmentModel.getOne({establishment_id})
             return document.getElementById('navbar').classList.add('hidden')
         }
         return document.getElementById('navbar').classList.remove('hidden')
-    }
-    function logoutToggleIcon(x) {
-        x.querySelector('#logout_btn').classList.toggle("hidden");
     }
     async function logout() {
         const response = await fetch('api/user/logout', {

@@ -15,8 +15,11 @@ if (!user) {
 	return Astro.redirect("/sign-in");
 }
 
-const { establishment_id } = user
+if (!user.payment) {
+	return Astro.redirect("/payment");
+}
 
+const { establishment_id } = user
 
 const establishment = await EstablishmentModel.getOne({ establishment_id })
 

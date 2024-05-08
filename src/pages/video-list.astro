@@ -10,6 +10,10 @@ if (!user) {
 	return Astro.redirect("/sign-in");
 }
 
+if (!user.payment) {
+	return Astro.redirect("/payment");
+}
+
 const { establishment_id } = user
 
 if (!establishment_id){
@@ -21,7 +25,7 @@ const videos = await VideosModel.getAll({ establishment_id });
 
 <Layout title="SportsCamera!">
 	<Navbar />
-	<section class="search_video grid bg-white h-full w-full md:rounded-r-xl px-5 text-center gap-y-4 md: gap-x-20">
+	<section class="search_video grid bg-white h-full  md:rounded-r-xl px-5 text-center gap-y-4 md: gap-x-20">
 		<strong class="font-medium text-2xl md:text-3xl text-primary text-nowrap h-fit">Videos del establecimiento</strong>
         <section class="video_list w-full md:w-[450px] h-full overflow-hidden">
             <ListVideos videos={videos} client:visible />

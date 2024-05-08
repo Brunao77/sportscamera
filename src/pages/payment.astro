@@ -1,0 +1,45 @@
+---
+import Navbar from "../components/Navbar.astro";
+import Copy from "../icons/Copy.astro";
+import Layout from "../layouts/Layout.astro";
+
+const user = Astro.locals.user;
+if (!user) {
+	return Astro.redirect("/sign-in");
+}
+
+const pago = user.payment
+
+const today = new Date();
+let month = new Intl.DateTimeFormat('es-ES', { month: 'long'}).format(today).toUpperCase();
+if (!pago && today.getDate() <= 7) {
+    const lastMonthDate = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
+    month = new Intl.DateTimeFormat('es-ES', { month: 'long'}).format(lastMonthDate).toUpperCase();
+}
+---
+<Layout title="Sportscamera!">
+    <Navbar />
+    <section class="bg-white md:w-[700px] h-full md:rounded-r-xl text-center z-0 max-w-4xl ">
+		<strong class="font-medium text-2xl md:text-3xl text-primary text-nowrap">Pago suscripción</strong>
+        <div class="p-3">
+        {pago ? <h3 class="text-green-300 text-2xl my-3">Usted ha abonado el mes de <strong>{month}</strong></h3>
+                <p>Recordá que el abono se realiza en los primeros 7 días del mes.</p>
+        :
+            <h3 class="text-red-500 text-2xl my-3">Usted no ha abonado el mes de <strong>{month}</strong></h3>
+            <p>Realiza el pago por un monto de <strong class="text-primary">$20.000</strong> a la siguiente cuenta</p>
+            <div class="flex flex-col my-5">
+                <div class="flex items-center text-center justify-center gap-2 text-xl"><span class="font-semibold">CVU: </span><span id="cvu">12345969496396</span><button id="copy_btn"><Copy /></button></div>
+                <span class="font-semibold text-xl">Alias: <span class="font-normal text-xl">bruno.munne</span></span>
+                <span class="font-semibold text-xl">Nombre: <span class="font-normal text-xl">Bruno Munne</span></span>
+            </div>
+            <p>Enviar comprobante al mail: <strong>sportscamera123@gmail.com</strong></p>
+        }
+        </div>
+	</section>
+    <script>
+        const cvu = document.getElementById('cvu').innerHTML
+        document.getElementById('copy_btn').addEventListener("click", async()=>{
+            await navigator.clipboard.writeText(cvu);
+        })
+    </script>
+</Layout>

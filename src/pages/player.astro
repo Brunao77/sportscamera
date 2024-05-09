@@ -1,0 +1,136 @@
+---
+import Maximize from "../icons/Maximize.astro";
+import Minimize from "../icons/Minimize.astro";
+import Play from "../icons/Play.astro";
+import Stop from "../icons/Stop.astro";
+import TrackNext from "../icons/TrackNext.astro";
+import TrackPrev from "../icons/TrackPrev.astro";
+import Info from "../icons/Info.astro";
+---
+
+<!doctype html>
+<html class="h-full" lang="es">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="description" content="Astro description" />
+		<meta name="viewport" content="width=device-width" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="generator" content={Astro.generator} />
+		<title>Sportscamera!</title>
+	</head>
+	<body class="overflow-hidden h-full">
+        <div id="videoContainer" class="relative h-full bg-black" data-fullscreen="false">
+            <video id="video" src="video-test/11_2024-05-07T06-02-29.166Z.mp4"></video>
+            <div id="video-controls" class="absolute inset-x-0 bottom-0 w-full flex flex-col px-10 py-5 gap-3" data-state="hidden">
+                <div class="flex justify-between items-center">
+                    <button><Info /></button>
+                    <div class="flex items-center">
+                        <button><TrackPrev /></button>
+                        <button id="playpause" data-state="play"><Play id="play_icon" /><Stop hidden id="stop_icon" /></button>
+                        <button><TrackNext /></button>
+                        <button class="bg-white h-7 w-7 rounded-full"></button>
+                    </div>
+                    <button id="fs" data-state="maximize"><Maximize id="maximize_icon" /><Minimize hidden id="minimize_icon"/></button>
+                </div>
+                <progress id="progress" class="w-full" min="0" value="0"><span id="progress-bar"></span></progress>
+            </div>
+        </div>
+        <style>
+            progress {
+                overflow:hidden;
+                -moz-border-radius:10px;
+                -webkit-border-radius:10px;
+                border-radius:10px;
+                color:#9F4AA0; /* Internet Explorer uses this value as the progress bar's value colour */
+                cursor:pointer;
+            }
+            progress::-webkit-progress-value {
+                background-color:#9F4AA0;
+            }
+        </style>
+        <script>
+            const videoContainer = document.getElementById('videoContainer');
+            const video = document.getElementById('video');
+            const playpause = document.getElementById('playpause');
+            const progress = document.getElementById('progress');
+            const progressBar = document.getElementById('progress-bar');
+            const fullscreen = document.getElementById('fs');
+            const playIcon = document.getElementById('play_icon');
+            const stopIcon = document.getElementById('stop_icon');
+            const maximizeIcon = document.getElementById('maximize_icon');
+            const minimizeIcon = document.getElementById('minimize_icon');
+
+            function changeButtonState(type) {
+				if (type == 'playpause') {
+					if (video.paused || video.ended) {
+                        playpause.setAttribute('data-state', 'play');
+                        stopIcon.classList.add('hidden')
+                        playIcon.classList.remove('hidden')
+					}
+					else {
+                        playpause.setAttribute('data-state', 'pause');
+                        stopIcon.classList.remove('hidden')
+                        playIcon.classList.add('hidden')
+					}
+				}
+				else if (type == 'maximizeminimize') {
+                    if(fullscreen.getAttribute("data-state") === 'maximize'){
+                        fullscreen.setAttribute("data-state", 'minimize')
+                        minimizeIcon.classList.remove('hidden')
+                        maximizeIcon.classList.add('hidden')
+                        videoContainer.requestFullscreen();
+                    }else{
+                        fullscreen.setAttribute("data-state", 'maximize')
+                        minimizeIcon.classList.add('hidden')
+                        maximizeIcon.classList.remove('hidden')
+                        document.exitFullscreen();
+                    }
+					
+				}
+			}
+            playpause.addEventListener('click', ()=>{
+                if (video.paused || video.ended) video.play();
+				else video.pause();
+            })
+
+            video.addEventListener('play', function() {
+				changeButtonState('playpause');
+			}, false);
+            
+			video.addEventListener('pause', function() {
+				changeButtonState('playpause');
+			}, false);
+
+            video.addEventListener('loadedmetadata', function() {
+				progress.setAttribute('max', video.duration);
+			});
+
+            video.addEventListener('timeupdate', function() {
+				if (!progress.getAttribute('max')) progress.setAttribute('max', video.duration);
+				progress.value = video.currentTime;
+				progressBar.style.width = Math.floor((video.currentTime / video.duration) * 100) + '%';
+			});
+
+            progress.addEventListener('click', function(e) {
+				const pos = (e.pageX  - (this.offsetLeft + this.offsetParent.offsetLeft + this.offsetParent.offsetParent.offsetLeft)) / this.offsetWidth;
+				video.currentTime = pos * video.duration;
+			});
+
+            fullscreen.addEventListener('click', ()=>{
+                if(fullscreen.getAttribute("data-state") === 'maximize'){
+                    fullscreen.setAttribute("data-state", 'minimize')
+                    minimizeIcon.classList.remove('hidden')
+                    maximizeIcon.classList.add('hidden')
+                    videoContainer.requestFullscreen();
+                }else{
+                    fullscreen.setAttribute("data-state", 'maximize')
+                    document.exitFullscreen();
+                    minimizeIcon.classList.add('hidden')
+                    maximizeIcon.classList.remove('hidden')
+                }
+            })
+
+        </script>
+	</body>
+</html>
+

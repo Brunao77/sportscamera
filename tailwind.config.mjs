@@ -8,7 +8,6 @@ export default {
         primary: "var(--color-primary)",
         secondary: "var(--color-secondary)",
         terciary: "var(--color-terciary)",
-        white: "var(--color-white)",
         ice: "var(--color-twitch-ice)",
         primary_disabled: "var(--color-primary-disabled)",
       },

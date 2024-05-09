@@ -1,0 +1,7 @@
+---
+const { hidden, id } = Astro.props
+
+---
+<svg class=`${hidden && 'hidden'}` id={id} width="24" height="24" fill="#fff">
+    <path d="M0 0h24v24H0z" fill="none"/><path d="M6 4v16a1 1 0 0 0 1.524.852l13-8a1 1 0 0 0 0-1.704l-13-8A1 1 0 0 0 6 4z"/>
+</svg>

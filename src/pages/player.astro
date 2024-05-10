@@ -6,6 +6,28 @@ import Stop from "../icons/Stop.astro";
 import TrackNext from "../icons/TrackNext.astro";
 import TrackPrev from "../icons/TrackPrev.astro";
 import Info from "../icons/Info.astro";
+import { VideosModel } from "../models/videos";
+import { CameraModel } from "../models/camera";
+import { EstablishmentModel } from "../models/establishment";
+
+const { video_id } = Astro.props
+
+if(!video_id)
+    return Astro.redirect("/");
+
+const video = await VideosModel.getById({ video_id })
+
+if(!video)
+    return Astro.redirect("/");
+
+const { camera_id, date, start_time, end_time } = video
+
+const camera = await CameraModel.getById({ camera_id })
+
+const { establishment_id, field_name } = camera
+
+const { name, address, phone } = await EstablishmentModel.getById({ establishment_id })
+
 ---
 
 <!doctype html>
@@ -35,6 +57,14 @@ import Info from "../icons/Info.astro";
                 <progress id="progress" class="w-full" min="0" value="0"><span id="progress-bar"></span></progress>
                 <div><span id="current_time"></span><span id="duration"></span></div>
             </div>
+        </div>
+        <div>
+            <h1>{name}</h1>
+            <span>{field_name}</span>
+            <span>{address}</span>
+            <span>{phone}</span>
+            <span>{date}</span>
+            <span>{start_time} - {end_time}</span>
         </div>
         <style>
             progress {

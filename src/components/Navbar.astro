@@ -10,7 +10,7 @@ import { EstablishmentModel } from "../models/establishment.js";
 const user = Astro.locals.user;
 const { establishment_id } = user
 
-const establishment = await EstablishmentModel.getOne({establishment_id})
+const establishment = await EstablishmentModel.getById({establishment_id})
 ---
 
 <button class="absolute top-0 left-2 z-20 md:hidden rounded-xl text-primary container" onclick="navbarToggleIcon(this)">

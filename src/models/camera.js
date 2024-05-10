@@ -1,6 +1,18 @@
 import { pool } from "./db.js";
 
 export class CameraModel {
+  static async getById({ camera_id }) {
+    // GET ALL CAMERAS IN THE ESTABLISHMENT
+    try {
+      const { rows } = await pool.query(
+        "SELECT * FROM cameras WHERE camera_id = $1",
+        [camera_id]
+      );
+      return rows;
+    } catch (error) {
+      console.log(error);
+    }
+  }
   static async getAll({ establishment_id }) {
     // GET ALL CAMERAS IN THE ESTABLISHMENT
     try {

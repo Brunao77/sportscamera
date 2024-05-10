@@ -73,11 +73,11 @@ export default function FormSearchVideo({options}) {
     const handleSubmit = (event)=>{
         event.preventDefault();
 
-        const {video_url} = [...videosList].find(({start_time, end_time}) => {
+        const { video_id } = [...videosList].find(({start_time, end_time}) => {
             return `${start_time}-${end_time}` ===  selects.hour.value
         })
 
-        window.location.href = video_url
+        window.location.href = `player?video=${video_id}`
     }
   
     return (

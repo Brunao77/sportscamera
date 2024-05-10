@@ -9,7 +9,7 @@ export class EstablishmentModel {
       console.log(error);
     }
   }
-  static async getOne({ establishment_id }) {
+  static async getById({ establishment_id }) {
     try {
       const { rows } = await pool.query(
         "SELECT * FROM establishments WHERE establishment_id = $1",

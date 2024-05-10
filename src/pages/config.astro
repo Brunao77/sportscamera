@@ -21,7 +21,7 @@ if (!user.payment) {
 
 const { establishment_id } = user
 
-const establishment = await EstablishmentModel.getOne({ establishment_id })
+const establishment = await EstablishmentModel.getById({ establishment_id })
 
 const cameras = await CameraModel.getAll({establishment_id});
 

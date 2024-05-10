@@ -1,6 +1,19 @@
 import { pool } from "./db.js";
 
 export class VideosModel {
+  static async getById({ video_id }) {
+    try {
+      const { rows } = await pool.query(
+        `SELECT *
+         FROM videos
+         WHERE video_id = $1`,
+        [video_id]
+      );
+      return rows;
+    } catch (error) {
+      console.log(error);
+    }
+  }
   static async getAll({ establishment_id }) {
     try {
       const { rows } = await pool.query(

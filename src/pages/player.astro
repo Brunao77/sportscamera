@@ -25,14 +25,15 @@ import Info from "../icons/Info.astro";
                 <div class="flex justify-between items-center">
                     <button><Info /></button>
                     <div class="flex items-center">
-                        <button><TrackPrev /></button>
+                        <button id="track_prev"><TrackPrev /></button>
                         <button id="playpause" data-state="play"><Play id="play_icon" /><Stop hidden id="stop_icon" /></button>
-                        <button><TrackNext /></button>
+                        <button id="track_next"><TrackNext /></button>
                         <button class="bg-white h-7 w-7 rounded-full"></button>
                     </div>
                     <button id="fs" data-state="maximize"><Maximize id="maximize_icon" /><Minimize hidden id="minimize_icon"/></button>
                 </div>
                 <progress id="progress" class="w-full" min="0" value="0"><span id="progress-bar"></span></progress>
+                <div><span id="current_time"></span><span id="duration"></span></div>
             </div>
         </div>
         <style>
@@ -59,6 +60,71 @@ import Info from "../icons/Info.astro";
             const stopIcon = document.getElementById('stop_icon');
             const maximizeIcon = document.getElementById('maximize_icon');
             const minimizeIcon = document.getElementById('minimize_icon');
+            const trackPrev = document.getElementById('track_prev')
+            const trackNext = document.getElementById('track_next')
+            const currentTime = document.getElementById('current_time')
+            const durationSpan = document.getElementById('duration')
+
+            trackNext.addEventListener('click', ()=>{
+                video.currentTime += 10;
+            })
+
+            trackPrev.addEventListener('click', ()=>{
+                video.currentTime -= 10;
+            })
+
+            playpause.addEventListener('click', ()=>{
+                if (video.paused || video.ended) video.play();
+				else video.pause();
+            })
+
+            video.addEventListener('play', function() {
+				changeButtonState('playpause');
+			}, false);
+            
+			video.addEventListener('pause', function() {
+				changeButtonState('playpause');
+			}, false);
+
+            video.addEventListener('loadedmetadata', function() {
+				progress.setAttribute('max', video.duration);
+                currentTimeDuration()
+			});
+
+            video.addEventListener('timeupdate', function() {
+                currentTimeDuration()
+				if (!progress.getAttribute('max')) progress.setAttribute('max', video.duration);
+				progress.value = video.currentTime;
+				progressBar.style.width = Math.floor((video.currentTime / video.duration) * 100) + '%';
+			});
+
+            progress.addEventListener('click', function(e) {
+				const pos = (e.pageX  - (this.offsetLeft + this.offsetParent.offsetLeft + this.offsetParent.offsetParent.offsetLeft)) / this.offsetWidth;
+				video.currentTime = pos * video.duration;
+			});
+
+            progress.addEventListener('mouseover', function (e) {
+                const pos = (e.pageX - (this.offsetLeft + this.offsetParent.offsetLeft + this.offsetParent.offsetParent.offsetLeft)) / this.offsetWidth;
+                const duration = pos * video.duration;
+                const minutes = Math.floor(duration / 60);
+                const seconds = Math.floor(duration % 60);
+                const timeString = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+                this.setAttribute('title', timeString);
+            });
+
+            fullscreen.addEventListener('click', ()=>{
+                if(fullscreen.getAttribute("data-state") === 'maximize'){
+                    fullscreen.setAttribute("data-state", 'minimize')
+                    minimizeIcon.classList.remove('hidden')
+                    maximizeIcon.classList.add('hidden')
+                    videoContainer.requestFullscreen();
+                }else{
+                    fullscreen.setAttribute("data-state", 'maximize')
+                    document.exitFullscreen();
+                    minimizeIcon.classList.add('hidden')
+                    maximizeIcon.classList.remove('hidden')
+                }
+            })
 
             function changeButtonState(type) {
 				if (type == 'playpause') {
@@ -88,48 +154,29 @@ import Info from "../icons/Info.astro";
 					
 				}
 			}
-            playpause.addEventListener('click', ()=>{
-                if (video.paused || video.ended) video.play();
-				else video.pause();
-            })
 
-            video.addEventListener('play', function() {
-				changeButtonState('playpause');
-			}, false);
-            
-			video.addEventListener('pause', function() {
-				changeButtonState('playpause');
-			}, false);
+            function currentTimeDuration(){
+                const currTime = Math.round(video.currentTime);
+                const duration = Math.round(video.duration);
+                
+                const currentTimeStr = formatTime(currTime);
+                const durationStr = formatTime(duration);
 
-            video.addEventListener('loadedmetadata', function() {
-				progress.setAttribute('max', video.duration);
-			});
+                currentTime.innerText = currentTimeStr;
+                durationSpan.innerText = durationStr;
+            }
 
-            video.addEventListener('timeupdate', function() {
-				if (!progress.getAttribute('max')) progress.setAttribute('max', video.duration);
-				progress.value = video.currentTime;
-				progressBar.style.width = Math.floor((video.currentTime / video.duration) * 100) + '%';
-			});
+            function formatTime(time) {
+                let hours = Math.floor(time / 3600);
+                let minutes = Math.floor((time % 3600) / 60);
+                let seconds = time % 60;
 
-            progress.addEventListener('click', function(e) {
-				const pos = (e.pageX  - (this.offsetLeft + this.offsetParent.offsetLeft + this.offsetParent.offsetParent.offsetLeft)) / this.offsetWidth;
-				video.currentTime = pos * video.duration;
-			});
-
-            fullscreen.addEventListener('click', ()=>{
-                if(fullscreen.getAttribute("data-state") === 'maximize'){
-                    fullscreen.setAttribute("data-state", 'minimize')
-                    minimizeIcon.classList.remove('hidden')
-                    maximizeIcon.classList.add('hidden')
-                    videoContainer.requestFullscreen();
-                }else{
-                    fullscreen.setAttribute("data-state", 'maximize')
-                    document.exitFullscreen();
-                    minimizeIcon.classList.add('hidden')
-                    maximizeIcon.classList.remove('hidden')
+                if (hours > 0) {
+                    return `${hours}:${(minutes < 10 ? '0' : '') + minutes}:${(seconds < 10 ? '0' : '') + seconds}`;
+                } else {
+                    return `${minutes}:${(seconds < 10 ? '0' : '') + seconds}`;
                 }
-            })
-
+            }
         </script>
 	</body>
 </html>

@@ -67,14 +67,13 @@ if(Astro.request.method === 'POST'){
 		console.error(error);
 	}
 }
-
 ---
 
 <Layout title="SportsCamera!">
 	<Navbar />
 	<section class="bg-white h-full md:rounded-r-xl text-center z-0 max-w-4xl">
 		<strong class="font-medium text-2xl md:text-3xl text-primary text-nowrap">Configuracion</strong>
-        <form method="POST"  class="text-start p-3">
+        <form method="POST"  class="text-start p-3" id="form">
             <strong class="text-primary text-2xl font-medium">Establecimiento</strong>
             <div class="flex flex-wrap my-2 gap-4">
                 <label>
@@ -107,9 +106,26 @@ if(Astro.request.method === 'POST'){
                     </Input>
                 </label>
             </div>
-            <div class="flex md:justify-end mt-5 gap-5">
-                <Button type="submit">GUARDAR CAMBIOS</Button>
+            <div class="flex md:justify-end w-100 mt-5 gap-5">
+                <Button type="submit" id="save_btn">
+                    <span id="content_btn">GUARDAR CAMBIOS</span>
+				    <div class='w-6 h-6 border-4 border-ice border-l-transparent rounded-full animate-spin hidden' id="spinner"></div>
+                </Button>
             </div>
         </form>
 	</section>
+    <script is:inline>
+        document.addEventListener('astro:page-load', ()=>{
+            const form = document.getElementById('form')
+            const saveBtn = document.getElementById('save_btn')
+			const contentBtn = document.getElementById('content_btn')
+			const spinner = document.getElementById('spinner')
+
+            form.addEventListener('submit', ()=>{
+                saveBtn.disabled = true
+                contentBtn.style.display = "none"
+                spinner.classList.remove('hidden')
+            })
+        }, { once: false })
+    </script>
 </Layout>

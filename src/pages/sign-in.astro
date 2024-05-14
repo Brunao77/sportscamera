@@ -75,4 +75,18 @@ if(Astro.request.method === 'POST'){
 		<p class="m-0 font-light text-l w-3/4">Servicio de grabacion en establecimientos deportivos</p>
 		<a class="rounded-2xl border p-3" href="/">BUSCAR VIDEO</a>
 	</section>
+	<script is:inline>
+		document.addEventListener('astro:page-load',()=>{
+			const form = document.getElementById('loginForm')
+			const loginBtn = document.getElementById('login_btn')
+			const contentBtn = document.getElementById('content_btn')
+			const spinner = document.getElementById('spinner')
+			form.addEventListener('submit', () =>{
+				loginBtn.disabled = true
+				contentBtn.style.display = 'none'
+				spinner.classList.remove('hidden')
+			})
+		}, { once: false })
+		
+	</script>
 </Layout>

@@ -10,6 +10,7 @@ export default function FormSearchVideo({options}) {
         hour: {value:'', options: []}
     })
     const [videosList, setVideoList] = useState(null)
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(()=>{
         const dates = getLastDays()
@@ -73,12 +74,17 @@ export default function FormSearchVideo({options}) {
 
     const handleSubmit = (event)=>{
         event.preventDefault();
+        setIsSubmitting(true);
 
         const { video_id } = [...videosList].find(({start_time, end_time}) => {
             return `${start_time}-${end_time}` ===  selects.hour.value
         })
 
-        window.location.href = `player/${video_id}`
+        if(video_id){
+            window.location.href = `player/${video_id}`
+        }else{
+            setIsSubmitting(false);
+        }
     }
   
     return (
@@ -88,7 +94,7 @@ export default function FormSearchVideo({options}) {
                 <Select placeholder='Cancha' disabled={!selects.field.options.length} option={selects.field} onChange={handleChangeField} />
                 <Select placeholder='Día' disabled={!selects.field.value} option={selects.date} onChange={handleChangeDate} />
                 <Select placeholder='Hora' disabled={!selects.hour.options.length} option={selects.hour} onChange={handleChangeHour} />
-                <button type='submit' class="cursor-pointer rounded-2xl bg-primary border text-white text-l text-regular p-3 px-5">BUSCAR</button>
+                <button type='submit' class="cursor-pointer rounded-2xl bg-primary border text-white text-l text-regular p-3 px-5 disabled:bg-primary_disabled" disabled={isSubmitting}>BUSCAR</button>
             </form>
 
         </>

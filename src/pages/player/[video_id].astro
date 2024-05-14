@@ -56,7 +56,17 @@ const { name, address, phone } = await EstablishmentModel.getById({ establishmen
                         <button id="track_next"><TrackNext /></button>
                         <button class="bg-white h-7 w-7 rounded-full"></button>
                     </div>
-                    <button id="fs" data-state="maximize"><Maximize id="maximize_icon" /><Minimize hidden id="minimize_icon"/></button>
+                    <div class="relative flex items-center gap-2">
+                        <ul class="absolute bg-[#6A6A6A] top-[-510%] flex flex-col hidden text-white rounded" id="rete_opts">
+                            <li class="cursor-pointer hover:bg-[#7E7E7E] px-4 rounded-t" data-rate="0.5">0.5</li>
+                            <li class="cursor-pointer hover:bg-[#7E7E7E] px-4" data-rate="0.75">0.75</li>
+                            <li class="cursor-pointer hover:bg-[#7E7E7E] px-4" data-rate="1">1</li>
+                            <li class="cursor-pointer hover:bg-[#7E7E7E] px-4" data-rate="1.5">1.5</li>
+                            <li class="cursor-pointer hover:bg-[#7E7E7E] px-4 rounded-b" data-rate="2">2</li>
+                        </ul>
+                        <button class="text-white font-medium px-5 rounded hover:bg-[#6A6A6A]" id="rate">x1</button>
+                        <button id="fs" data-state="maximize"><Maximize id="maximize_icon" /><Minimize hidden id="minimize_icon"/></button>
+                    </div>
                 </div>
                 <progress id="progress" class="w-full" min="0" value="0"><span id="progress-bar"></span></progress>
             </div>
@@ -76,7 +86,7 @@ const { name, address, phone } = await EstablishmentModel.getById({ establishmen
                 -moz-border-radius:10px;
                 -webkit-border-radius:10px;
                 border-radius:10px;
-                color:#9F4AA0; /* Internet Explorer uses this value as the progress bar's value colour */
+                color:#9F4AA0;
                 cursor:pointer;
             }
             progress::-webkit-progress-value {
@@ -102,6 +112,22 @@ const { name, address, phone } = await EstablishmentModel.getById({ establishmen
             const filterBg = document.getElementById('filter_bg')
             const infoModal = document.getElementById('info_modal')
             const closeModal = document.getElementById('close_modal')
+            const rate = document.getElementById('rate')
+            const rateOptions = document.getElementById('rete_opts')
+
+            rate.addEventListener('click', ()=>{
+                rateOptions.classList.toggle('hidden')
+            })
+
+            const options = rateOptions.querySelectorAll('li');
+            options.forEach(option => {
+                option.addEventListener('click', (event) => {
+                    const rateSelected = event.target.getAttribute('data-rate');
+                    video.playbackRate = rateSelected;
+                    rate.innerText = `x${rateSelected}`;
+                    rateOptions.classList.add('hidden');
+                });
+            });
 
             filterBg.addEventListener('click',()=>{
                 filterBg.classList.add('hidden')

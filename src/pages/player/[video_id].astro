@@ -1,16 +1,17 @@
 ---
-import Maximize from "../icons/Maximize.astro";
-import Minimize from "../icons/Minimize.astro";
-import Play from "../icons/Play.astro";
-import Stop from "../icons/Stop.astro";
-import TrackNext from "../icons/TrackNext.astro";
-import TrackPrev from "../icons/TrackPrev.astro";
-import Info from "../icons/Info.astro";
-import { VideosModel } from "../models/videos";
-import { CameraModel } from "../models/camera";
-import { EstablishmentModel } from "../models/establishment";
+import Maximize from "../../icons/Maximize.astro";
+import Minimize from "../../icons/Minimize.astro";
+import Play from "../../icons/Play.astro";
+import Stop from "../../icons/Stop.astro";
+import TrackNext from "../../icons/TrackNext.astro";
+import TrackPrev from "../../icons/TrackPrev.astro";
+import Info from "../../icons/Info.astro";
+import { VideosModel } from "../../models/videos";
+import { CameraModel } from "../../models/camera";
+import { EstablishmentModel } from "../../models/establishment";
+import { convertirFormatoFecha } from "../../utils"
 
-const { video_id } = Astro.props
+const { video_id } = Astro.params
 
 if(!video_id)
     return Astro.redirect("/");
@@ -20,7 +21,7 @@ const video = await VideosModel.getById({ video_id })
 if(!video)
     return Astro.redirect("/");
 
-const { camera_id, date, start_time, end_time } = video
+const { camera_id, date, start_time, end_time, video_url } = video
 
 const camera = await CameraModel.getById({ camera_id })
 
@@ -42,10 +43,13 @@ const { name, address, phone } = await EstablishmentModel.getById({ establishmen
 	</head>
 	<body class="overflow-hidden h-full">
         <div id="videoContainer" class="relative h-full bg-black" data-fullscreen="false">
-            <video id="video" src="video-test/11_2024-05-07T06-02-29.166Z.mp4"></video>
+            <video id="video" preload="metadata" src={video_url}></video>
             <div id="video-controls" class="absolute inset-x-0 bottom-0 w-full flex flex-col px-10 py-5 gap-3" data-state="hidden">
                 <div class="flex justify-between items-center">
-                    <button><Info /></button>
+                    <div class="flex gap-2 items-center">
+                        <button id="info"><Info /></button>
+                        <div class="text-white"><span id="current_time"></span> / <span id="duration"></span></div>
+                    </div>
                     <div class="flex items-center">
                         <button id="track_prev"><TrackPrev /></button>
                         <button id="playpause" data-state="play"><Play id="play_icon" /><Stop hidden id="stop_icon" /></button>
@@ -55,16 +59,16 @@ const { name, address, phone } = await EstablishmentModel.getById({ establishmen
                     <button id="fs" data-state="maximize"><Maximize id="maximize_icon" /><Minimize hidden id="minimize_icon"/></button>
                 </div>
                 <progress id="progress" class="w-full" min="0" value="0"><span id="progress-bar"></span></progress>
-                <div><span id="current_time"></span><span id="duration"></span></div>
             </div>
         </div>
-        <div>
-            <h1>{name}</h1>
-            <span>{field_name}</span>
-            <span>{address}</span>
-            <span>{phone}</span>
-            <span>{date}</span>
-            <span>{start_time} - {end_time}</span>
+        <div class={`fixed left-0 top-0 w-full h-full bg-[rgba(0,0,0,0.5)] hidden`} id="filter_bg"></div>
+        <div id="info_modal" class="hidden bg-white absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 flex flex-col rounded text-2xl w-1/4 px-5 py-2 gap-2">
+            <div class="flex justify-between items-center"><h1 class="text-[#9F4AA0]  text-5xl font-medium mb-2">{name}</h1><button id="close_modal" class="font-bold text-red-400 text-2xl">X</button></div>
+            <span >Cancha: {field_name}</span>
+            <span>Dirección: {address}</span>
+            <span>Teléfono: {phone}</span>
+            <span>Día: {convertirFormatoFecha(date)}</span>
+            <span>Horario: {start_time.slice(0,-3)} - {end_time.slice(0,-3)}</span>
         </div>
         <style>
             progress {
@@ -94,6 +98,25 @@ const { name, address, phone } = await EstablishmentModel.getById({ establishmen
             const trackNext = document.getElementById('track_next')
             const currentTime = document.getElementById('current_time')
             const durationSpan = document.getElementById('duration')
+            const info = document.getElementById('info')
+            const filterBg = document.getElementById('filter_bg')
+            const infoModal = document.getElementById('info_modal')
+            const closeModal = document.getElementById('close_modal')
+
+            filterBg.addEventListener('click',()=>{
+                filterBg.classList.add('hidden')
+                infoModal.classList.add('hidden')
+            })
+
+            closeModal.addEventListener('click', ()=>{
+                filterBg.classList.add('hidden')
+                infoModal.classList.add('hidden')
+            })
+
+            info.addEventListener('click', ()=>{
+                filterBg.classList.remove('hidden')
+                infoModal.classList.remove('hidden')
+            })
 
             trackNext.addEventListener('click', ()=>{
                 video.currentTime += 10;
@@ -127,6 +150,14 @@ const { name, address, phone } = await EstablishmentModel.getById({ establishmen
 				progress.value = video.currentTime;
 				progressBar.style.width = Math.floor((video.currentTime / video.duration) * 100) + '%';
 			});
+
+            video.addEventListener('click', ()=>{
+                if (video.paused) {
+                    video.play();
+                } else { // Si se está reproduciendo, páralo
+                    video.pause();
+                }
+            })
 
             progress.addEventListener('click', function(e) {
 				const pos = (e.pageX  - (this.offsetLeft + this.offsetParent.offsetLeft + this.offsetParent.offsetParent.offsetLeft)) / this.offsetWidth;

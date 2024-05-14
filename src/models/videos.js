@@ -9,7 +9,7 @@ export class VideosModel {
          WHERE video_id = $1`,
         [video_id]
       );
-      return rows;
+      return rows[0];
     } catch (error) {
       console.log(error);
     }
@@ -17,7 +17,7 @@ export class VideosModel {
   static async getAll({ establishment_id }) {
     try {
       const { rows } = await pool.query(
-        `SELECT videos.video_id, videos.date, videos.start_time, videos.end_time, videos.name, videos.video_url, videos.camera_id, cameras.field_name 
+        `SELECT videos.video_id, videos.date, videos.start_time, videos.end_time, videos.video_url, videos.camera_id, cameras.field_name 
          FROM videos, cameras 
          WHERE cameras.establishment_id = $1 AND videos.camera_id = cameras.camera_id 
          ORDER BY videos.date DESC, videos.start_time DESC`,
@@ -42,7 +42,7 @@ export class VideosModel {
   static async getVideoTurns({ camera_id, date }) {
     try {
       const { rows } = await pool.query(
-        `SELECT videos.video_id, videos.date, videos.start_time, videos.end_time, videos.name, videos.video_url, videos.camera_id, cameras.field_name
+        `SELECT videos.video_id, videos.date, videos.start_time, videos.end_time, videos.video_url, videos.camera_id, cameras.field_name
          FROM videos, cameras
          WHERE videos.date = $1 AND videos.camera_id = $2 AND videos.camera_id = cameras.camera_id`,
         [date, camera_id]

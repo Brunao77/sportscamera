@@ -8,7 +8,7 @@ export class CameraModel {
         "SELECT * FROM cameras WHERE camera_id = $1",
         [camera_id]
       );
-      return rows;
+      return rows[0];
     } catch (error) {
       console.log(error);
     }

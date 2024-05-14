@@ -14,11 +14,12 @@ const { establishment_id } = user
 
 const cameras = await CameraModel.getAll({establishment_id});
 
-await fetch(`http://localhost:3000/run-stream?rtsp=${cameras[1].rtsp}`)
+//await fetch(`http://localhost:3000/run-stream?rtsp=${cameras[0].rtsp}`)
 
 /*cameras.forEach(camera=>{
     fetch(`http://localhost:3000/run-stream?rtsp=${camera.rtsp}`)
 })*/
+
 ---
 
 <Layout title="SportsCamera!">
@@ -26,13 +27,17 @@ await fetch(`http://localhost:3000/run-stream?rtsp=${cameras[1].rtsp}`)
     <section class="bg-white h-full md:rounded-r-xl text-center z-0 max-w-4xl w-[5000px] overflow-hidden h-full pb-5">
 		<strong class="font-medium text-2xl md:text-3xl text-primary text-nowrap">Grabar</strong>
         <div class="grid grid-cols-2 gap-2 p-5 overflow-scroll h-full ">
-            {cameras && cameras.map(({ field_name, rtsp }) => {
+            {cameras && cameras.map(async ({ field_name, rtsp }) => {
+                const response = await fetch(`http://localhost:3000/exist-record?rtsp=${rtsp}`).then(res=> res.text())
+                const existRecord = response !== 'false'
+
                 return <div class="flex flex-col w-full h-fit">
                     <span class="text-start text-bold text-l">{field_name}</span>
-                    <video class="" id={rtsp} autoplay muted controls></video>
+                    <video id={rtsp} autoplay muted></video>
                     <div class="flex items-center gap-2 bg-black p-2">
-                        <button class="border-none cursor-pointer w-6 h-6 rounded-full bg-[#646464] recordstop" data-state="record"></button>
-                        <span class="text-[#646464] hidden record_span">Grabando</span>
+                        <button class={`border-none cursor-pointer w-6 h-6 rounded-full bg-${existRecord ? 'red-500' : '[#646464]'} recordstop`} data-state={`${existRecord ? 'stop-record' : 'record'}`}></button>
+                        <span class={`text-[#646464] ${!existRecord && 'hidden'} record_span`}>Grabando</span>
+                        <div class="chronometer text-white hidden">00:00:00</div>
                     </div>
                 </div>
             })}
@@ -40,16 +45,28 @@ await fetch(`http://localhost:3000/run-stream?rtsp=${cameras[1].rtsp}`)
 	</section>
     <script is:inline src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script is:inline define:vars={{ cameras }}>
+        document.addEventListener('DOMContentLoaded', () => {
+            
             const elements = document.getElementsByClassName("recordstop");
+
+            const chronometers = {}
+            
             for(let i = 0; i < elements.length; i++){
                 elements[i].addEventListener('click',function(){
                     const { camera_id, rtsp } = cameras[i]
                     const recordSpan = this.parentNode.querySelector('.record_span');
+                    const chronometer = this.parentNode.querySelector('.chronometer');
                     if (this.getAttribute('data-state') === 'record'){
                         this.setAttribute('data-state', 'stop-record');
                         recordSpan.classList.remove('hidden');
                         this.classList.remove('bg-[#646464]');
                         this.classList.add('bg-red-500');
+                        chronometers[rtsp] = {
+                            intervalId: null,
+                            startTime: Date.now(),
+                        };
+                        startChronometer(rtsp, chronometer)
+                        chronometer.classList.remove('hidden')
                         fetch(`http://localhost:3000/record?camera_id=${camera_id}&rtsp=${rtsp}`).then(response => console.log(response))
                     }
                     else{
@@ -57,6 +74,8 @@ await fetch(`http://localhost:3000/run-stream?rtsp=${cameras[1].rtsp}`)
                         recordSpan.classList.add('hidden')
                         this.classList.remove('bg-red-500');
                         this.classList.add('bg-[#646464]');
+                        chronometer.classList.add('hidden')
+                        stopChronometer(rtsp)
                         fetch(`http://localhost:3000/stop-record?rtsp=${rtsp}`).then(response => console.log(response))
                     }
                 })
@@ -66,30 +85,61 @@ await fetch(`http://localhost:3000/run-stream?rtsp=${cameras[1].rtsp}`)
                 if (Hls.isSupported()) {
                     const video = document.getElementById(rtsp);
                     video.play()
-                    const hls = new Hls();
+                    const  hls = new Hls();
                     hls.attachMedia(video);
                     hls.on(Hls.Events.MEDIA_ATTACHED, function () {
                         const ip = rtsp.match(/rtsp:\/\/admin:password123@([\d.]+):/)[1];
-                        console.log(ip)
                         hls.loadSource(`http://localhost:3000/get-stream/${ip}/index.m3u8`);
+                        hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
+                            playVideo();
+                        });
                     });
                 }
             });
-    </script>
-    <!--<script is:inline src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <script is:inline>
-        document.addEventListener('astro:page-load', () => {
-            if (Hls.isSupported()) {
-                const video = document.getElementById('video');
-                const hls = new Hls();
-                hls.attachMedia(video);
-                hls.on(Hls.Events.MEDIA_ATTACHED, function () {
-                    hls.loadSource("http://localhost:3000/192.168.0.64/output.m3u8");
-                    hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
-                        console.log("manifest loaded, found " + data.levels.length + " quality level");
-                    });
-                });
+
+            function playVideo() {
+                if (!document.hidden) {
+                video.play();
+                }
             }
-        }, { once: true });
-    </script>-->
+
+            document.addEventListener('visibilitychange', function() {
+                cameras.forEach(({ rtsp }) => {
+                    const video = document.getElementById(rtsp);
+                    if (document.hidden) {
+                        video.pause();
+                    } else {
+                        video.currentTime = Math.max(0, video.duration - 4);
+                        video.play()
+                    }
+                })
+                
+            });
+
+            function startChronometer(rtsp, element) {
+                const intervalId = setInterval(() => { updateChronometer(rtsp, element) }, 1000);
+                chronometers[rtsp].intervalId = intervalId;
+            }
+
+            function updateChronometer(rtsp, element) {
+                const chronometer = chronometers[rtsp];
+                const currentTime = Date.now();
+                const elapsedTime = currentTime - chronometer.startTime;
+                const hours = Math.floor(elapsedTime / 3600000);
+                const minutes = Math.floor((elapsedTime % 3600000) / 60000);
+                const seconds = Math.floor((elapsedTime % 60000) / 1000);
+
+                const hoursFormat = hours < 10 ? "0" + hours : hours;
+                const minutesFormat = minutes < 10 ? "0" + minutes : minutes;
+                const secondsFormat = seconds < 10 ? "0" + seconds : seconds;
+
+                element.innerText = hoursFormat + ":" + minutesFormat + ":" + secondsFormat;
+            }
+
+            function stopChronometer(rtsp) {
+                clearInterval(chronometers[rtsp].intervalId);
+                delete chronometers[rtsp]
+            }
+        })
+    </script>
 </Layout>

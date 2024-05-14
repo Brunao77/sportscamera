@@ -51,6 +51,7 @@ export default function FormSearchVideo({options}) {
 			response.json()
 		);
         setVideoList(videos)
+        console.log(videos)
         
         const turnsOptions = videos.map(({start_time, end_time})=>{
             return {value: `${start_time}-${end_time}` , text: `${start_time.slice(0, -3)} - ${end_time.slice(0, -3)}`}
@@ -77,7 +78,7 @@ export default function FormSearchVideo({options}) {
             return `${start_time}-${end_time}` ===  selects.hour.value
         })
 
-        window.location.href = `player?video=${video_id}`
+        window.location.href = `player/${video_id}`
     }
   
     return (

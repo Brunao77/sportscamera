@@ -33,13 +33,14 @@ if (!pago && today.getDate() <= 7) {
                 <span class="font-semibold text-xl">Nombre: <span class="font-normal text-xl">Bruno Munne</span></span>
             </div>
             <p>Enviar comprobante al mail: <strong>sportscamera123@gmail.com</strong></p>
+            <script>
+                const cvu = document.getElementById('cvu').innerText
+                document.getElementById('copy_btn').addEventListener("click", async()=>{
+                    await navigator.clipboard.writeText(cvu);
+                })
+            </script>
         }
         </div>
 	</section>
-    <script>
-        const cvu = document.getElementById('cvu').innerHTML
-        document.getElementById('copy_btn').addEventListener("click", async()=>{
-            await navigator.clipboard.writeText(cvu);
-        })
-    </script>
+    
 </Layout>

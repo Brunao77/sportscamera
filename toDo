@@ -1,0 +1,7 @@
+[ x ] Cronometro en la grabacion se pausa cuando se navega en otras pestanas
+[  ] Cronometro intervalId cuando cambio de pestana al grabar, volver y querer cortar la grabacion
+[  ] Cronometro no guarda el estado cuando se refresca
+[  ] Ver transmision en directo hls
+[  ] Servir el video desde el bucket en forma hls
+[  ] Funcionalidad de crear clips
+[  ] Agregar a la base de datos el video desde el server node o astro?

@@ -24,13 +24,8 @@ export const getLastDays = () => {
     date.setDate(today.getDate() - i);
 
     // Formatear la fecha (puedes personalizar el formato según tus necesidades)
-    const formattedDate =
-      ("0" + date.getDate()).slice(-2) +
-      "-" +
-      ("0" + (date.getMonth() + 1)).slice(-2) +
-      "-" +
-      date.getFullYear();
-
+    const formattedDate = date.getFullYear() + "-" + ("0" + (date.getMonth() + 1)).slice(-2) + "-" + ("0" + date.getDate()).slice(-2)
+     
     dates.push({ value: formattedDate, text: formattedDate });
   }
   return dates;

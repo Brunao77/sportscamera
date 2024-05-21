@@ -13,12 +13,14 @@
     "@astrojs/cloudflare": "^10.2.5",
     "@astrojs/preact": "^3.2.0",
     "@astrojs/tailwind": "^5.1.0",
+    "@aws-sdk/client-s3": "^3.577.0",
     "@lucia-auth/adapter-postgresql": "^3.1.2",
     "astro": "^4.6.1",
     "lucia": "^3.1.1",
     "nodemailer": "^6.9.13",
     "pg": "^8.11.5",
-    "tailwindcss": "^3.4.1"
+    "tailwindcss": "^3.4.1",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@rollup/plugin-node-resolve": "^15.2.3",

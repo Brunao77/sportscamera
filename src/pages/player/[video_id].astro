@@ -13,9 +13,10 @@ import { convertirFormatoFecha } from "../../utils"
 import Input from "../../components/Input.astro"
 import Button from "../../components/Button.astro";
 import { ClipsModel } from "../../models/clips"
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3"
+import { PutObjectCommand } from "@aws-sdk/client-s3"
 import { v4 as uuidv4 } from 'uuid'
 import ClipList from "../../icons/ClipList.astro";
+import { S3 } from "../../s3";
 
 const { video_id } = Astro.params
 
@@ -43,9 +44,13 @@ let error = ''
 if(Astro.request.method === 'POST'){
     const {title, start, end} = await Astro.request.json();
 
-    const intStart = Math.trunc((start / 2) + 1)
+    const intStart = Math.trunc((start / 20))
 
-    const intEnd = Math.trunc((end / 2) + 1)
+    const intEnd = Math.trunc((end / 20))
+
+    const TIME_OFFSET = start - (intStart * 20)
+
+    const lastSegmentDuration = end - (intEnd * 20);
 
     const newDate = new Date(date);
     const formatedDate = newDate.toISOString().split('T')[0];
@@ -54,26 +59,25 @@ if(Astro.request.method === 'POST'){
     const m3u8Content = [
         '#EXTM3U',
         '#EXT-X-VERSION:3',
-        `#EXT-X-TARGETDURATION: 2`,
-        '#EXT-X-MEDIA-SEQUENCE:0',
+        `#EXT-X-TARGETDURATION: 20`,
+        `#EXT-X-MEDIA-SEQUENCE: ${intStart}`,
+        `#EXT-X-START:TIME-OFFSET=${TIME_OFFSET}`
     ];
 
     for (let i = intStart; i <= intEnd; i++) {
         const ts = `${camera_id}a${formatedDate}a${formatedTime}a${i}.ts`
-        m3u8Content.push(`#EXTINF:2.000000,`)
-        m3u8Content.push(ts);
+        if(i !== intEnd){
+            m3u8Content.push(`#EXTINF:20.000000,`)
+            m3u8Content.push(ts);
+        }else{
+            m3u8Content.push(`#EXTINF:${lastSegmentDuration},`)
+            m3u8Content.push(ts);
+        }
     }
 
-    const m3u8String = m3u8Content.join('\n');
+    m3u8Content.push('#EXT-X-ENDLIST');
 
-    const S3 = new S3Client({
-        region: "auto",
-        endpoint: `https://${import.meta.env.ACCOUNTIDS3}.r2.cloudflarestorage.com`,
-        credentials: {
-            accessKeyId: import.meta.env.ACCESSKEYIDS3,
-            secretAccessKey: import.meta.env.SECRETACCESSKEYS3,
-        },
-    });
+    const m3u8String = m3u8Content.join('\n');
 
     const key = `clip_${uuidv4()}.m3u8`
 
@@ -112,7 +116,8 @@ if(Astro.request.method === 'POST'){
 		<title>Sportscamera!</title>
 	</head>
 	<body class="overflow-hidden h-full">
-        <div id="videoContainer" class="h-full bg-black" data-fullscreen="false">
+        <div id="videoContainer" class="relative h-full bg-black" data-fullscreen="false">
+            <div class='absolute top-1/2 left-1/2 w-20 h-20 border-4 border-white border-l-transparent rounded-full animate-spin hidden' id="spinnerVideo"></div>
             <video id="video" class=" w-full h-full" preload="metadata"></video>
             <div class="bg-red-700 absolute top-5 left-1/2 text-white text-2xl rounded px-5 py-2 hidden" id="clip_chronometer">00:00</div>
             <div id="video-controls" class="absolute inset-x-0 bottom-0 w-full flex flex-col px-10 py-5 gap-3" data-state="hidden">
@@ -172,7 +177,7 @@ if(Astro.request.method === 'POST'){
             <div class="flex justify-between items-center gap-5"><h1 class="text-[#9F4AA0] text-lg md:text-3xl font-medium text-nowrap">Lista de clips</h1><button class="close_modal font-bold text-red-400 text-2xl">X</button></div>
             <div class="overflow-auto h-full">
                 {clips.length !==0 ? clips.map(({ clip_id, title })=>{
-                    return <div class="flex items-center justify-between"><span>{title}</span><a class="rounded-2xl bg-primary border text-white text-sm py-2 px-5" href={`/clip/${clip_id}`}>VER</a></div>
+                    return <div class="flex items-center justify-between"><span>{title}</span><a class="rounded-2xl bg-primary border text-white text-sm py-2 px-5" href={`/clip/${clip_id}`} target="_blank">VER</a></div>
                 }) : <span>No hay clips para este video</span>}
             </div>
         </div>
@@ -257,242 +262,258 @@ if(Astro.request.method === 'POST'){
             const spinner = document.getElementById('spinner')
             const clipList = document.getElementById('clip_list_btn')
             const clipListModal = document.getElementById('clip_list_modal')
+            const spinnerVideo = document.getElementById('spinnerVideo')
 
             let modalOpen = false
+            let currentDurationStartClipSeconds = 0
+            let currentDurationStopClipSeconds = 0
             
             if (Hls.isSupported()) {
                 video.play()
                 const  hls = new Hls();
                 hls.attachMedia(video);
                 hls.on(Hls.Events.MEDIA_ATTACHED, function () {
-                    hls.loadSource(`some url/${video_url}`);
+                    hls.loadSource(`/api/videos/getVideo/${video_url}`);
                 });
             }
             
-            clipList.addEventListener('click', ()=>{
-                clipListModal.classList.remove('hidden')
-                filterBg.classList.remove('hidden')
-                modalOpen = true
-            })
-
-            let currentDurationStartClipSeconds = 0
-            let currentDurationStopClipSeconds = 0
-
-            saveClipForm.addEventListener('submit', async function(event){
-                event.preventDefault()
-                const title = clipTitle.value;
-                const clipData = {
-                    title,
-                    start: currentDurationStartClipSeconds,
-                    end: currentDurationStopClipSeconds
-                };
-                this.disabled = true
-				contentBtn.classList.add('hidden')
-				spinner.classList.remove('hidden')
-                
-                const res = await fetch(window.location.pathname, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(clipData)
-                })
-                if(res.ok){
-                    const { clip_id } =  await res.json()
-                    clipModal.classList.add('hidden')
-                    successModal.classList.remove('hidden')
-                    modalOpen = true
-
-                    const copyLinkButton = document.getElementById('copy_link_button');
-                    const viewClipButton = document.getElementById('view_clip_button');
-
-                    copyLinkButton.addEventListener('click', async () => {
-                        await navigator.clipboard.writeText(`http://localhost:4321/clip/${clip_id}`)
-                    });
-
-                    viewClipButton.addEventListener('click', () => {
-                        window.location.href = `/clip/${clip_id}`;
-                    });
-                }
-                this.disabled = false
-                contentBtn.classList.remove('hidden')
-				spinner.classList.add('hidden')
-            })
-
-            clipBtn.addEventListener('click', function(){
-                if(this.getAttribute('clip-state') === 'start') startClip()
-                else stopClip()
-            })
-
-            const startClip = ()=>{
-                clipBtn.setAttribute('clip-state', 'stop')
-                clipState.classList.remove('bg-white')
-                clipState.classList.add('bg-red-700')
-                clipChronometer.classList.remove('hidden')
-                clipChronometer.textContent = '00:00';
-                currentDurationStartClipSeconds = video.currentTime
-                startChronometer();
-                video.play();
-                changeButtonState('playpause');
-            }
-
-            const stopClip = ()=>{
-                clipBtn.setAttribute('clip-state', 'start')
-                clipState.classList.remove('bg-red-700')
-                clipState.classList.add('bg-white')
-                clipChronometer.classList.add('hidden')
-                currentDurationStopClipSeconds = video.currentTime
-                stopChronometer();
-                video.pause()
-                filterBg.classList.remove('hidden')
-                clipModal.classList.remove('hidden')
-                modalOpen = true
-            }
-
-            rate.addEventListener('click', ()=>{
-                rateOptions.classList.toggle('hidden')
-            })
-
-            const options = rateOptions.querySelectorAll('li');
-            options.forEach(option => {
-                option.addEventListener('click', (event) => {
-                    const rateSelected = event.target.getAttribute('data-rate');
-                    video.playbackRate = rateSelected;
-                    rate.innerText = `x${rateSelected}`;
-                    rateOptions.classList.add('hidden');
-                });
-            });
-
-            filterBg.addEventListener('click',()=>{
-                filterBg.classList.add('hidden')
-                if(!infoModal.classList.contains('hidden'))
-                    infoModal.classList.add('hidden')
-                if(!clipModal.classList.contains('hidden'))
-                    clipModal.classList.add('hidden')
-                if(!successModal.classList.contains('hidden'))
-                    successModal.classList.add('hidden')
-                if(!clipListModal.classList.contains('hidden'))
-                    clipListModal.classList.add('hidden')
-                modalOpen = false
-            })
-
-            for (let i = 0; i < closeModal.length; i++) {
-                closeModal[i].addEventListener('click', function(){
-                    this.parentNode.parentNode.classList.add('hidden')
-                    filterBg.classList.add('hidden')
-                    modalOpen = false
-                })
-            }
-
-            info.addEventListener('click', ()=>{
-                filterBg.classList.remove('hidden')
-                infoModal.classList.remove('hidden')
-                modalOpen = true
-            })
-
-            trackNext.addEventListener('click', ()=>{
-                video.currentTime += 10;
-            })
-
-            trackPrev.addEventListener('click', ()=>{
-                video.currentTime -= 10;
-            })
-
-            playpause.addEventListener('click', ()=>{
-                if (video.paused || video.ended) video.play();
-				else video.pause();
-            })
-
-            video.addEventListener('play', function() {
-				changeButtonState('playpause');
-			}, false);
-            
-			video.addEventListener('pause', function() {
-				changeButtonState('playpause');
-			}, false);
-
-            video.addEventListener('ended', function(){
-                if(clipBtn.getAttribute('clip-state') !== 'start') stopClip()
-            })
-
+            spinnerVideo.classList.remove('hidden')
             video.addEventListener('loadedmetadata', function() {
+                spinnerVideo.classList.add('hidden')
                 video.currentTime = 0
 				progress.setAttribute('max', video.duration);
                 currentTimeDuration()
-			});
 
-            video.addEventListener('timeupdate', function() {
-                currentTimeDuration()
-				if (!progress.getAttribute('max')) progress.setAttribute('max', video.duration);
-				progress.value = video.currentTime;
-				progressBar.style.width = Math.floor((video.currentTime / video.duration) * 100) + '%';
-			});
+                video.addEventListener('timeupdate', function() {
+                    currentTimeDuration()
+                    if (!progress.getAttribute('max')) progress.setAttribute('max', video.duration);
+                    progress.value = video.currentTime;
+                    progressBar.style.width = Math.floor((video.currentTime / video.duration) * 100) + '%';
+                });
 
-            video.addEventListener('click', ()=>{
-                if (video.paused) video.play();
-                else video.pause();
-            })
+                video.addEventListener('click', ()=>{
+                    if (video.paused) video.play();
+                    else video.pause();
+                })
 
-            progress.addEventListener('click', function(e) {
-				const pos = (e.pageX  - (this.offsetLeft + this.offsetParent.offsetLeft + this.offsetParent.offsetParent.offsetLeft)) / this.offsetWidth;
-				video.currentTime = pos * video.duration;
-			});
+                video.addEventListener('play', function() {
+                    changeButtonState('playpause');
+                }, false);
+                
+                video.addEventListener('pause', function() {
+                    changeButtonState('playpause');
+                }, false);
 
-            progress.addEventListener('mouseover', function (e) {
-                const pos = (e.pageX - (this.offsetLeft + this.offsetParent.offsetLeft + this.offsetParent.offsetParent.offsetLeft)) / this.offsetWidth;
-                const duration = pos * video.duration;
-                const minutes = Math.floor(duration / 60);
-                const seconds = Math.floor(duration % 60);
-                const timeString = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-                this.setAttribute('title', timeString);
-            });
+                video.addEventListener('ended', function(){
+                    if(clipBtn.getAttribute('clip-state') !== 'start') stopClip()
+                })
 
-            fullscreen.addEventListener('click', ()=>{
-                if(fullscreen.getAttribute("data-state") === 'maximize'){
-                    fullscreen.setAttribute("data-state", 'minimize')
-                    minimizeIcon.classList.remove('hidden')
-                    maximizeIcon.classList.add('hidden')
-                    videoContainer.requestFullscreen();
-                }else{
-                    fullscreen.setAttribute("data-state", 'maximize')
-                    document.exitFullscreen();
-                    minimizeIcon.classList.add('hidden')
-                    maximizeIcon.classList.remove('hidden')
+                clipList.addEventListener('click', ()=>{
+                    clipListModal.classList.remove('hidden')
+                    filterBg.classList.remove('hidden')
+                    modalOpen = true
+                })
+
+                saveClipForm.addEventListener('submit', async function(event){
+                    event.preventDefault()
+                    const title = clipTitle.value;
+                    const clipData = {
+                        title,
+                        start: currentDurationStartClipSeconds,
+                        end: currentDurationStopClipSeconds
+                    };
+                    this.disabled = true
+                    contentBtn.classList.add('hidden')
+                    spinner.classList.remove('hidden')
+                    
+                    const res = await fetch(window.location.pathname, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(clipData)
+                    })
+                    if(res.ok){
+                        const { clip_id } =  await res.json()
+                        clipModal.classList.add('hidden')
+                        successModal.classList.remove('hidden')
+                        modalOpen = true
+
+                        const copyLinkButton = document.getElementById('copy_link_button');
+                        const viewClipButton = document.getElementById('view_clip_button');
+
+                        copyLinkButton.addEventListener('click', async () => {
+                            await navigator.clipboard.writeText(`http://localhost:4321/clip/${clip_id}`)
+                        });
+
+                        viewClipButton.addEventListener('click', () => {
+                            window.open(`/clip/${clip_id}`, '_blank');
+                        });
+                    }
+                    this.disabled = false
+                    contentBtn.classList.remove('hidden')
+                    spinner.classList.add('hidden')
+                })
+
+                clipBtn.addEventListener('click', function(){
+                    if(this.getAttribute('clip-state') === 'start') startClip()
+                    else stopClip()
+                })
+
+                const startClip = ()=>{
+                    trackPrev.disabled = true
+                    trackNext.disabled = true
+                    playpause.disabled = true
+                    info.disabled = true
+                    clipList.disabled = true
+                    progress.style.pointerEvents = 'none'
+                    video.style.pointerEvents = 'none'
+                    clipBtn.setAttribute('clip-state', 'stop')
+                    clipState.classList.remove('bg-white')
+                    clipState.classList.add('bg-red-700')
+                    clipChronometer.classList.remove('hidden')
+                    clipChronometer.textContent = '00:00';
+                    currentDurationStartClipSeconds = video.currentTime
+                    startChronometer();
+                    video.play();
+                    changeButtonState('playpause');
                 }
-            })
 
-            document.addEventListener('keydown', function(event) {
-                if(!modalOpen){
-                    if (event.code === 'ArrowRight') video.currentTime += 10;
-                    if (event.code === 'ArrowLeft') video.currentTime -= 10;
-                    if (event.code === 'Space') {
-                        if (video.paused || video.ended) {
-                            video.play()
-                        }else{
-                            video.pause()
+                const stopClip = ()=>{
+                    trackPrev.disabled = false
+                    trackNext.disabled = false
+                    playpause.disabled = false
+                    info.disabled = false
+                    clipList.disabled = false
+                    progress.style.pointerEvents = 'auto'
+                    video.style.pointerEvents = 'auto'
+                    clipBtn.setAttribute('clip-state', 'start')
+                    clipState.classList.remove('bg-red-700')
+                    clipState.classList.add('bg-white')
+                    clipChronometer.classList.add('hidden')
+                    currentDurationStopClipSeconds = video.currentTime
+                    stopChronometer();
+                    video.pause()
+                    filterBg.classList.remove('hidden')
+                    clipModal.classList.remove('hidden')
+                    modalOpen = true
+                }
+
+                rate.addEventListener('click', ()=>{
+                    rateOptions.classList.toggle('hidden')
+                })
+
+                const options = rateOptions.querySelectorAll('li');
+                options.forEach(option => {
+                    option.addEventListener('click', (event) => {
+                        const rateSelected = event.target.getAttribute('data-rate');
+                        video.playbackRate = rateSelected;
+                        rate.innerText = `x${rateSelected}`;
+                        rateOptions.classList.add('hidden');
+                    });
+                });
+
+                filterBg.addEventListener('click',()=>{
+                    filterBg.classList.add('hidden')
+                    if(!infoModal.classList.contains('hidden'))
+                        infoModal.classList.add('hidden')
+                    if(!clipModal.classList.contains('hidden'))
+                        clipModal.classList.add('hidden')
+                    if(!successModal.classList.contains('hidden'))
+                        successModal.classList.add('hidden')
+                    if(!clipListModal.classList.contains('hidden'))
+                        clipListModal.classList.add('hidden')
+                    modalOpen = false
+                })
+
+                for (let i = 0; i < closeModal.length; i++) {
+                    closeModal[i].addEventListener('click', function(){
+                        this.parentNode.parentNode.classList.add('hidden')
+                        filterBg.classList.add('hidden')
+                        modalOpen = false
+                    })
+                }
+
+                info.addEventListener('click', ()=>{
+                    filterBg.classList.remove('hidden')
+                    infoModal.classList.remove('hidden')
+                    modalOpen = true
+                })
+
+                trackNext.addEventListener('click', ()=>{
+                    video.currentTime += 10;
+                })
+
+                trackPrev.addEventListener('click', ()=>{
+                    video.currentTime -= 10;
+                })
+
+                playpause.addEventListener('click', ()=>{
+                    if (video.paused || video.ended) video.play();
+                    else video.pause();
+                })
+
+                progress.addEventListener('click', function(e) {
+                    const pos = (e.pageX  - (this.offsetLeft + this.offsetParent.offsetLeft + this.offsetParent.offsetParent.offsetLeft)) / this.offsetWidth;
+                    video.currentTime = pos * video.duration;
+                });
+
+                progress.addEventListener('mouseover', function (e) {
+                    const pos = (e.pageX - (this.offsetLeft + this.offsetParent.offsetLeft + this.offsetParent.offsetParent.offsetLeft)) / this.offsetWidth;
+                    const duration = pos * video.duration;
+                    const minutes = Math.floor(duration / 60);
+                    const seconds = Math.floor(duration % 60);
+                    const timeString = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+                    this.setAttribute('title', timeString);
+                });
+
+                fullscreen.addEventListener('click', ()=>{
+                    if(fullscreen.getAttribute("data-state") === 'maximize'){
+                        fullscreen.setAttribute("data-state", 'minimize')
+                        minimizeIcon.classList.remove('hidden')
+                        maximizeIcon.classList.add('hidden')
+                        videoContainer.requestFullscreen();
+                    }else{
+                        fullscreen.setAttribute("data-state", 'maximize')
+                        document.exitFullscreen();
+                        minimizeIcon.classList.add('hidden')
+                        maximizeIcon.classList.remove('hidden')
+                    }
+                })
+
+                document.addEventListener('keydown', function(event) {
+                    if(!modalOpen){
+                        if (event.code === 'ArrowRight') video.currentTime += 10;
+                        if (event.code === 'ArrowLeft') video.currentTime -= 10;
+                        if (event.code === 'Space') {
+                            if (video.paused || video.ended) {
+                                video.play()
+                            }else{
+                                video.pause()
+                            }
+                        }
+                        if (event.code === 'Enter') {
+                            if(clipBtn.getAttribute('clip-state') === 'start') startClip()
+                            else stopClip()
+                        }
+                        if (event.code === 'KeyF') changeButtonState('maximizeminimize')
+                    }else{
+                        if (event.code === 'Escape'){
+                            if(!filterBg.classList.contains('hidden'))
+                                filterBg.classList.add('hidden')
+                            if(!infoModal.classList.contains('hidden'))
+                                infoModal.classList.add('hidden')
+                            if(!clipModal.classList.contains('hidden'))
+                                clipModal.classList.add('hidden')
+                            if(!successModal.classList.contains('hidden'))
+                                successModal.classList.add('hidden')
+                            if(!clipListModal.classList.contains('hidden'))
+                                clipListModal.classList.add('hidden')
+                            modalOpen = false
                         }
                     }
-                    if (event.code === 'KeyR') {
-                        if(clipBtn.getAttribute('clip-state') === 'start') startClip()
-                        else stopClip()
-                    }
-                    if (event.code === 'KeyF') changeButtonState('maximizeminimize')
-                }else{
-                    if (event.code === 'Escape'){
-                        if(!filterBg.classList.contains('hidden'))
-                            filterBg.classList.add('hidden')
-                        if(!infoModal.classList.contains('hidden'))
-                            infoModal.classList.add('hidden')
-                        if(!clipModal.classList.contains('hidden'))
-                            clipModal.classList.add('hidden')
-                        if(!successModal.classList.contains('hidden'))
-                            successModal.classList.add('hidden')
-                        if(!clipListModal.classList.contains('hidden'))
-                            clipListModal.classList.add('hidden')
-                        modalOpen = false
-                    }
-                }
-            });
+                });
+			});
 
             function changeButtonState(type) {
 				if (type == 'playpause') {
@@ -530,7 +551,8 @@ if(Astro.request.method === 'POST'){
                 const durationStr = formatTime(duration);
 
                 currentTime.innerText = currentTimeStr;
-                durationSpan.innerText = durationStr;
+                if(durationSpan)
+                    durationSpan.innerText = durationStr;
             }
 
             function formatTime(time) {

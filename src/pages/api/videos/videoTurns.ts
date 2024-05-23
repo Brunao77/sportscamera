@@ -1,4 +1,3 @@
-import { UserModel } from "../../../models/user.js"
 import { VideosModel } from "../../../models/videos.js"
 import type { APIContext } from 'astro';
 

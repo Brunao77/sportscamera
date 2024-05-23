@@ -35,6 +35,7 @@ const formatedDate = newDate.toISOString().split('T')[0];
 	</head>
 	<body class="overflow-hidden h-full">
         <div id="videoContainer" class="relative h-full bg-black" data-fullscreen="false">
+            <div class='absolute top-1/2 left-1/2 w-20 h-20 border-4 border-white border-l-transparent rounded-full animate-spin hidden' id="spinnerVideo"></div>
             <video id="video" class="object-cover w-full" preload="metadata"></video>
             <div id="video-controls" class="absolute inset-x-0 bottom-0 w-full flex flex-col px-10 py-5 gap-3" data-state="hidden">
                 <div class="flex justify-between items-center">
@@ -111,15 +112,23 @@ const formatedDate = newDate.toISOString().split('T')[0];
             const durationSpan = document.getElementById('duration')
             const rate = document.getElementById('rate')
             const rateOptions = document.getElementById('rate_opts')
+            const videoSpinner = document.getElementById('spinnerVideo')
 
             if (Hls.isSupported()) {
                 video.play()
                 const  hls = new Hls();
                 hls.attachMedia(video);
                 hls.on(Hls.Events.MEDIA_ATTACHED, function () {
-                    hls.loadSource(`some url/${clip_url}`);
+                    hls.loadSource(`/api/videos/getVideo/${clip_url}`);
                 });
             }
+
+            // Optionally, disable controls outside the allowed range
+            video.addEventListener('seeked', function() {
+                if (video.currentTime < allowedStart || video.currentTime > allowedEnd) {
+                video.currentTime = allowedStart;
+                }
+            });
 
             rate.addEventListener('click', ()=>{
                 rateOptions.classList.toggle('hidden')
@@ -156,8 +165,9 @@ const formatedDate = newDate.toISOString().split('T')[0];
 				changeButtonState('playpause');
 			}, false);
 
+            videoSpinner.classList.remove('hidden')
             video.addEventListener('loadedmetadata', function() {
-                video.currentTime = 0
+                videoSpinner.classList.add('hidden')
 				progress.setAttribute('max', video.duration);
                 currentTimeDuration()
 			});
@@ -251,7 +261,8 @@ const formatedDate = newDate.toISOString().split('T')[0];
                 const durationStr = formatTime(duration);
 
                 currentTime.innerText = currentTimeStr;
-                durationSpan.innerText = durationStr;
+                if(durationStr)
+                    durationSpan.innerText = durationStr;
             }
 
             function formatTime(time) {

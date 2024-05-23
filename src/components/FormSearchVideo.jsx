@@ -10,7 +10,7 @@ export default function FormSearchVideo({options}) {
         hour: {value:'', options: []}
     })
     const [videosList, setVideoList] = useState(null)
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(true);
 
     useEffect(()=>{
         const dates = getLastDays()
@@ -52,7 +52,6 @@ export default function FormSearchVideo({options}) {
 			response.json()
 		);
         setVideoList(videos)
-        console.log(videos)
         
         const turnsOptions = videos.map(({start_time, end_time})=>{
             return {value: `${start_time}-${end_time}` , text: `${start_time.slice(0, -3)} - ${end_time.slice(0, -3)}`}
@@ -70,6 +69,7 @@ export default function FormSearchVideo({options}) {
             ...prevState, 
             hour: {value: target.value, options: prevState.hour.options}
         }))
+        setIsSubmitting(false)
     }
 
     const handleSubmit = (event)=>{

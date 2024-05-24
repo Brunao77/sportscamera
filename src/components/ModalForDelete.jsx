@@ -4,7 +4,7 @@ export default function ModalForDelete({ listVideos, setListVideos, videoForDele
     const handleDelete = async () =>{
         const response = await fetch('/api/videos', {
             method:'DELETE',
-            body: JSON.stringify({video_id: videoForDelete.video_id})
+            body: JSON.stringify({video: videoForDelete})
         })
         setVideoForDelete(null)
         if(response.status === 200){

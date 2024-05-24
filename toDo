@@ -6,4 +6,4 @@
 [ x ] Funcionalidad de crear clips
 [ x ] Crear key unica para cada clip
 
-[  ] todos los .ts zipeados? como los deszipeo y los sirvo?, no usar la solucion de .ts y directamente mp4? como clipeo con mp4?
+[   ] API connect-src self, pq pasa esto?

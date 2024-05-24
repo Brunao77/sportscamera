@@ -118,30 +118,30 @@ if(Astro.request.method === 'POST'){
 	<body class="overflow-hidden h-full">
         <div id="videoContainer" class="relative h-full bg-black" data-fullscreen="false">
             <div class='absolute top-1/2 left-1/2 w-20 h-20 border-4 border-white border-l-transparent rounded-full animate-spin hidden' id="spinnerVideo"></div>
-            <video id="video" class=" w-full h-full" preload="metadata"></video>
-            <div class="bg-red-700 absolute top-5 left-1/2 text-white text-2xl rounded px-5 py-2 hidden" id="clip_chronometer">00:00</div>
-            <div id="video-controls" class="absolute inset-x-0 bottom-0 w-full flex flex-col px-10 py-5 gap-3" data-state="hidden">
-                <div class="flex justify-between items-center">
-                    <div class="flex gap-2 items-center">
-                        <button id="info" tabindex="-1"><Info /></button>
-                        <div class="text-white"><span id="current_time"></span> / <span id="duration"></span></div>
-                        <button id="clip_list_btn" tabindex="-1"><ClipList /></button>
+            <video id="video" class="w-full h-full" preload="metadata"></video>
+            <div class="bg-red-700 absolute top-5 left-1/2 -translate-x-1/2 text-white text-2xl rounded px-5 py-2 hidden" id="clip_chronometer">00:00</div>
+            <div id="video-controls" class="absolute bottom-0 w-full flex flex-col px-10 py-5 gap-3" data-state="hidden">
+                <div class="flex justify-between items-end md:items-center">
+                    <div class="flex gap-2 md:items-center md:flex-row flex-col-reverse flex-1">
+                        <button id="info" class="order-2 md:order-none" tabindex="-1"><Info /></button>
+                        <div class="text-white text-md md:text-xl order-3 md:order-none"><span id="current_time">0:00</span> / <span id="duration">0:00:00</span></div>
+                        <button id="clip_list_btn" class="order-1 md:order-none" tabindex="-1"><ClipList /></button>
                     </div>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 md:justify-center flex-1">
                         <button id="track_prev" tabindex="-1"><TrackPrev /></button>
                         <button id="playpause" data-state="play"><Play id="play_icon" /><Stop hidden id="stop_icon" /></button>
                         <button id="track_next" tabindex="-1"><TrackNext /></button>
                         <button class="border-2 h-9 w-9 rounded-full flex items-center justify-center" id="clip_btn" clip-state="start" tabindex="-1"><div class="bg-white h-5 w-5 rounded-full" id="clip_state"></div></button>
                     </div>
-                    <div class="relative flex items-center gap-2">
-                        <ul class="absolute bg-[#6A6A6A] top-[-510%] flex flex-col hidden text-white rounded" id="rate_opts">
+                    <div class="relative flex md:flex-row flex-col items-end md:items-center gap-2 flex-1 justify-end">
+                        <ul class="absolute bg-[#6A6A6A] top-[-150%] md:top-[-250%] md:left-[80%] flex flex-col hidden text-white rounded" id="rate_opts">
                             <li class="cursor-pointer hover:bg-[#7E7E7E] px-4 rounded-t" data-rate="0.5">0.5</li>
                             <li class="cursor-pointer hover:bg-[#7E7E7E] px-4" data-rate="0.75">0.75</li>
                             <li class="cursor-pointer hover:bg-[#7E7E7E] px-4" data-rate="1">1</li>
                             <li class="cursor-pointer hover:bg-[#7E7E7E] px-4" data-rate="1.5">1.5</li>
                             <li class="cursor-pointer hover:bg-[#7E7E7E] px-4 rounded-b" data-rate="2">2</li>
                         </ul>
-                        <button class="text-white font-medium px-5 rounded hover:bg-[#6A6A6A]" id="rate" tabindex="-1">x1</button>
+                        <button class="text-white text-xl md:text-3xl font-medium px-5 rounded hover:bg-[#6A6A6A]" id="rate" tabindex="-1">x1</button>
                         <button id="fs" data-state="maximize" tabindex="-1"><Maximize id="maximize_icon" /><Minimize hidden id="minimize_icon"/></button>
                     </div>
                 </div>
@@ -149,9 +149,9 @@ if(Astro.request.method === 'POST'){
             </div>
         </div>
         <div class={`fixed left-0 top-0 w-full h-full bg-[rgba(0,0,0,0.5)] hidden`} id="filter_bg"></div>
-        <div id="info_modal" class="hidden bg-white absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 flex flex-col rounded text-lg px-5 py-2 gap-2">
+        <div id="info_modal" class="hidden bg-white absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 flex flex-col rounded text-lg py-2 px-2 gap-2 w-[300px] md:w-[400px]">
             <div class="flex justify-between items-center"><h1 class="text-[#9F4AA0] text-lg md:text-3xl font-medium">{name}</h1><button class="close_modal font-bold text-red-400 text-2xl">X</button></div>
-            <span >Cancha: {field_name}</span>
+            <span>Cancha: {field_name}</span>
             <span>Dirección: {address}</span>
             <span>Teléfono: {phone}</span>
             <span>Día: {convertirFormatoFecha(date)}</span>
@@ -173,11 +173,11 @@ if(Astro.request.method === 'POST'){
             <Button id="copy_link_button">Copiar link</Button>
             <Button id="view_clip_button">Ver clip</Button>
         </div>
-        <div id="clip_list_modal" class="h-1/2 overflow-hidden hidden bg-white absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 flex flex-col rounded text-lg px-10 py-5 gap-5">
-            <div class="flex justify-between items-center gap-5"><h1 class="text-[#9F4AA0] text-lg md:text-3xl font-medium text-nowrap">Lista de clips</h1><button class="close_modal font-bold text-red-400 text-2xl">X</button></div>
+        <div id="clip_list_modal" class="h-1/2 overflow-hidden hidden bg-white absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 flex flex-col rounded text-lg py-5 gap-5">
+            <div class="flex justify-between items-center px-2 w-full"><h1 class="text-[#9F4AA0] text-lg md:text-3xl font-medium text-nowrap">Lista de clips</h1><button class="close_modal font-bold text-red-400 text-2xl">X</button></div>
             <div class="overflow-auto h-full">
                 {clips.length !==0 ? clips.map(({ clip_id, title })=>{
-                    return <div class="flex items-center justify-between"><span>{title}</span><a class="rounded-2xl bg-primary border text-white text-sm py-2 px-5" href={`/clip/${clip_id}`} target="_blank">VER</a></div>
+                    return <div class="flex items-center justify-between w-[350px] px-2"><span>{title}</span><a class="rounded-2xl bg-primary border text-white text-sm py-2 px-5" href={`/clip/${clip_id}`} target="_blank">VER</a></div>
                 }) : <span>No hay clips para este video</span>}
             </div>
         </div>

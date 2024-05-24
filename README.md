@@ -1,7 +1,8 @@
 # SportsCamera!
-/* IMAGEN DEL LOGO */
 
-Graba turnos y compartelo a todos los usuarios
+![logo](https://github.com/Brunao77/sportscamera/assets/88481339/15ebe677-d388-4088-9727-ecd40eb852da)
+
+**GRABÁ** los turnos y **COMPARTILOS** a todos los usuarios
 
 /* IMAGEN / */
 

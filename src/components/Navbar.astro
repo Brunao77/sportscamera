@@ -18,7 +18,7 @@ const establishment = await EstablishmentModel.getById({establishment_id})
     <div class="bar2"></div>
     <div class="bar3"></div>
 </button>
-<aside class="bg-primary absolute top-0 left-0 h-screen w-full z-10 text-white flex flex-col p-10 justify-between text-2xl hidden md:static md:flex md:h-full md:w-[250px] md:rounded-l-xl md:p-4  md:text-xl" id="navbar">
+<aside class="bg-primary absolute top-0 left-0 h-screen w-full z-10 text-white flex flex-col p-10 justify-between text-2xl hidden md:static md:flex md:h-full md:w-[300px] md:rounded-l-xl md:p-4  md:text-xl" id="navbar">
     <ul>
         <li>
             <a class="w-full flex gap-2 hover:bg-[#a262a3] rounded-xl py-3 px-1 text-nowrap items-center" href="/video-list">
@@ -45,10 +45,12 @@ const establishment = await EstablishmentModel.getById({establishment_id})
             </a>
         </li>
     </ul>
-    <div class="flex gap-2 items-center  w-full rounded-xl py-3 px-1 relative">
-        <User />
-        <span class="text-2xl truncate max-w-48">{establishment.name}</span>
-        <button class="absolute left-48" id="logout_btn" onclick="logout()"><Logout /></button>
+    <div class="flex justify-between items-center w-full rounded-xl py-3 px-1 relative">
+        <div class="flex rounded-xl py-3 px-1 text-nowrap items-center w-full hover:bg-[#a262a3]">
+            <User />
+            <span class="text-2xl truncate max-w-48">{establishment.name}</span>
+        </div>
+        <button class=" left-48" id="logout_btn" onclick="logout()"><Logout /></button>
     </div>
 </aside>
 <script is:inline>

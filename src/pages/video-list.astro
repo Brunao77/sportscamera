@@ -4,6 +4,7 @@ import FormSearchVideoUser from '../components/FormSearchVideoUser.jsx'
 import { VideosModel } from '../models/videos';
 import ListVideos from '../components/VideoList.jsx';
 import Navbar from '../components/Navbar.astro';
+import LayoutEstablishment from '../layouts/LayoutEstablishment.astro';
 
 const user = Astro.locals.user;
 if (!user) {
@@ -23,11 +24,11 @@ if (!establishment_id){
 const videos = await VideosModel.getAll({ establishment_id });
 ---
 
-<Layout title="SportsCamera!">
+<LayoutEstablishment title="SportsCamera!">
 	<Navbar />
-	<section class="search_video grid bg-white h-full  md:rounded-r-xl px-5 text-center gap-y-4 md: gap-x-20">
+	<section class="search_video grid bg-white h-full w-full md:rounded-r-xl px-5 text-center gap-4 md:justify-between md:grid-cols-[1fr]"><!--md:justify-between grid-cols-[min-content min-content] md:grid-cols-[1fr] -->
 		<strong class="font-medium text-2xl md:text-3xl text-primary text-nowrap h-fit">Videos del establecimiento</strong>
-        <section class="video_list w-full md:w-[450px] h-full overflow-hidden">
+        <section class="video_list w-full h-full overflow-hidden">
             <ListVideos videos={videos} client:visible />
         </section>
         <section class="filter flex flex-col gap-2 w-full md:w-[200px]">
@@ -35,13 +36,12 @@ const videos = await VideosModel.getAll({ establishment_id });
             {videos ? <FormSearchVideoUser establishment_id={establishment_id} client:visible /> : <span>No hay videos</span>}
         </section>
 	</section>
-</Layout>
+</LayoutEstablishment>
 <style>
 	.search_video{
         grid-template-areas: 
             "title title"
             "video-list filter";
-        grid-template-columns: min-content;
         grid-template-rows: min-content;
 		& strong{
             grid-area: title;
@@ -54,17 +54,13 @@ const videos = await VideosModel.getAll({ establishment_id });
             grid-area: filter;
         }
 	}
-    @media (max-width: 1000px) {
-        .video_list{
-            width: 100%;
-        }
-    }
     @media (max-width: 768px) {
         .search_video{
             grid-template-areas: 
-            "title title"
-            "filter filter"
-            "video-list video-list";
+            "title"
+            "filter"
+            "video-list";
+            grid-template-rows: min-content min-content 1fr;
         }
     }
 </style>

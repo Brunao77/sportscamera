@@ -2,6 +2,7 @@
 import Navbar from "../components/Navbar.astro";
 import Copy from "../icons/Copy.astro";
 import Layout from "../layouts/Layout.astro";
+import LayoutEstablishment from "../layouts/LayoutEstablishment.astro";
 
 const user = Astro.locals.user;
 if (!user) {
@@ -17,9 +18,9 @@ if (!pago && today.getDate() <= 7) {
     month = new Intl.DateTimeFormat('es-ES', { month: 'long'}).format(lastMonthDate).toUpperCase();
 }
 ---
-<Layout title="Sportscamera!">
+<LayoutEstablishment title="Sportscamera!">
     <Navbar />
-    <section class="bg-white md:w-[700px] h-full md:rounded-r-xl text-center z-0 max-w-4xl ">
+    <section class="bg-white w-full  h-full md:rounded-r-xl text-center z-0 ">
 		<strong class="font-medium text-2xl md:text-3xl text-primary text-nowrap">Pago suscripción</strong>
         <div class="p-3">
         {pago ? <h3 class="text-green-300 text-2xl my-3">Usted ha abonado el mes de <strong>{month}</strong></h3>
@@ -42,4 +43,4 @@ if (!pago && today.getDate() <= 7) {
         }
         </div>
 	</section>
-</Layout>
+</LayoutE>

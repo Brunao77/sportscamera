@@ -35,6 +35,7 @@ export default defineConfig({
         "stream",
         "tls",
         "path",
+        "argon2",
       ],
     },
     plugins: [nodeResolve(), nodeExternals(), nodePolyfills()],

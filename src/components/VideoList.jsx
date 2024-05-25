@@ -24,10 +24,10 @@ export default function VideoList({videos}) {
                     <option value='older'>Más antiguo</option>
                 </select>
             </div>
-            <div class="overflow-auto h-full pb-5">
-                {listVideos && listVideos.map((video)=>{
-                        const { field_name, date, start_time, end_time} = video
-                        return(
+            <div class="overflow-auto h-full pb-5 relative">
+                {listVideos && listVideos.length !== 0 ? listVideos.map((video)=>{
+                    const { field_name, date, start_time, end_time} = video
+                    return(
                         <div class="flex items-center justify-between">
                             <div class="flex items-center">
                                 <svg width="60" height="60" viewBox="0 0 24 24" stroke-width="1.5" stroke="#969696" fill="none" stroke-linecap="round" stroke-linejoin="round">
@@ -36,15 +36,17 @@ export default function VideoList({videos}) {
                                 <div class="flex flex-col">
                                     <strong class="text-start text-xl text-primary font-medium">{field_name}</strong>
                                     <div class="flex gap-4 text-terciary text-wrap">
-                                        <span class="md:text-nowrap text-xs md:text-l">{convertirFormatoFecha(date)}</span>
-                                        <span class="md:text-nowrap text-xs md:text-l">{start_time.slice(0,-3)} a {end_time.slice(0,-3)}</span>
+                                        <span class="md:text-nowrap text-xs md:text-md">{convertirFormatoFecha(date)}</span>
+                                        <span class="md:text-nowrap text-xs md:text-md">{start_time.slice(0,-3)} a {end_time.slice(0,-3)}</span>
                                     </div>
                                 </div>
                             </div>
                             <span class="font-bold text-2xl text-red-600 cursor-pointer" onClick={()=>setVideoForDelete(video)}>X</span>
                         </div>
                     )
-                })}
+                })
+                :
+                <span class="font-medium text-xl absolute top-1/3 -translate-y-1/2">No existen videos</span>}
            </div>
            {videoForDelete && <ModalForDelete listVideos={listVideos} setListVideos={setListVideos} videoForDelete={videoForDelete} setVideoForDelete={setVideoForDelete} />}
         </>

@@ -36,7 +36,7 @@ if(Astro.request.method === 'POST'){
 			if (!checkPassword)
 				error = 'Credenciales incorrectas'
 			else{
-				const session = await lucia.createSession(user.user_id, {});
+				const session = await lucia.createSession(user.id, {});
 				const sessionCookie = lucia.createSessionCookie(session.id);
 				Astro.cookies.set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes)
 

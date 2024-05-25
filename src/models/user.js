@@ -23,22 +23,22 @@ export class UserModel {
       console.log(error);
     }
   }
-  static async profile({ user_id }) {
+  static async profile({ id }) {
     try {
       const { rows } = await pool.query(
-        "SELECT email, establishment_id FROM users WHERE user_id = $1",
-        [user_id]
+        "SELECT email, establishment_id FROM users WHERE id = $1",
+        [id]
       );
       return rows[0];
     } catch (error) {
       console.log(error);
     }
   }
-  static async updatePassword({ password, user_id }) {
+  static async updatePassword({ password, id }) {
     try {
       const { rows } = await pool.query(
-        "UPDATE users SET password = $1 WHERE user_id = $2",
-        [password, user_id]
+        "UPDATE users SET password = $1 WHERE id = $2",
+        [password, id]
       );
       return rows[0];
     } catch (error) {

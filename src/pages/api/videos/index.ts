@@ -9,10 +9,10 @@ export async function GET(context: APIContext){ //GET ALL VIDEOS FROM ESTABLISHM
     if(!context.locals.session)
         return new Response(JSON.stringify({message: "Acceso no autorizado"}),{status:401})
     
-    const { userId: user_id } = context.locals.session;
+    const { userId: id } = context.locals.session;
 
     const { establishment_id } = await UserModel.profile({
-      user_id,
+      id,
     });
 
     if (!establishment_id)

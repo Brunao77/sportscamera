@@ -16,9 +16,9 @@ const { title, width, height } = Astro.props;
 		<ViewTransitions />
 	</head>
 	<body class="overflow-hidden relative">
-		<div class="w-screen h-screen md:flex md:items-center md:justify-center md:p-20">
-            <div class="-top-20 -right-40 absolute h-[500px] w-[500px] rounded-full bg-red-200"></div>
-            <div class="-bottom-20 -left-40 absolute h-[500px] w-[500px] rotate-45 bg-orange-200"></div>
+		<div class="h-screen md:flex md:items-center md:justify-center md:p-20">
+            <div class="-top-20 -right-40 absolute h-[500px] w-[500px] rounded-full bg-red-200 hidden md:block"></div>
+            <div class="-bottom-20 -left-40 absolute h-[500px] w-[500px] rotate-45 bg-orange-200 hidden md:block"></div>
 			<main class=`z-10 h-full md:h-full md:w-full flex md:flex-row flex-col-reverse md:rounded-xl`>
 				<slot />
 			</main>

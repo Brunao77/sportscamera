@@ -60,7 +60,7 @@ if(Astro.request.method === 'POST'){
             error = 'Email invalido'
         }
         else{
-            const verificationToken = await createPasswordResetToken(result.user_id);
+            const verificationToken = await createPasswordResetToken(result.id);
             const url = import.meta.env.MODE === 'development' ? import.meta.env.URL_DEVELOPMENT : import.meta.env.URL_PRODUCTION
             const verificationLink = url  + "/password_reset/" + verificationToken;
 

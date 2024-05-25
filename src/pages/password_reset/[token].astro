@@ -40,7 +40,7 @@ if(Astro.request.method === 'POST'){
 				await lucia.invalidateUserSessions(tokenRow.user_id);
 				const argon2id = new Argon2id();
 				const hashedPassword = await argon2id.hash(password);
-				await UserModel.updatePassword({ password: hashedPassword, user_id: tokenRow.user_id })
+				await UserModel.updatePassword({ password: hashedPassword, id: tokenRow.user_id })
 
 				const session = await lucia.createSession(tokenRow.user_id, {});
 				const sessionCookie = lucia.createSessionCookie(session.id);

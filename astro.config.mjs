@@ -15,11 +15,11 @@ export default defineConfig({
   ],
   output: "server",
   adapter: cloudflare({
-    imageService: "passthrough",
+    imageService: "cloudflare",
   }),
   vite: {
     ssr: {
-      noExternal: ["oslo", "nodemailer", "pg", "astro"], // Añadir 'astro'
+      external: ["oslo", "nodemailer", "pg", "astro"], // Añadir 'astro'
     },
     resolve: {
       alias: {

@@ -18,7 +18,7 @@ export default defineConfig({
   adapter: cloudflare(),
   vite: {
     ssr: {
-      external: ["oslo", "nodemailer"],
+      external: ["oslo", "nodemailer", "pg"],
     },
   },
 });

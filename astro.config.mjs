@@ -18,8 +18,20 @@ export default defineConfig({
     imageService: "cloudflare",
   }),
   vite: {
-    ssr: {
-      external: ["node:crypto"],
+    resolve: {
+      alias: {
+        events: "rollup-plugin-node-polyfills/polyfills/events",
+        stream: "rollup-plugin-node-polyfills/polyfills/stream",
+        util: "rollup-plugin-node-polyfills/polyfills/util",
+      },
     },
+    plugins: [
+      nodeResolve({
+        browser: true,
+        preferBuiltins: true,
+      }),
+      nodePolyfills(),
+      nodeExternals(),
+    ],
   },
 });

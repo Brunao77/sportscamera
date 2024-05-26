@@ -16,31 +16,4 @@ export default defineConfig({
   ],
   output: "server",
   adapter: cloudflare(),
-  vite: {
-    ssr: {
-      external: [
-        "node:crypto",
-        "events",
-        "util",
-        "url",
-        "net",
-        "dns",
-        "crypto",
-        "fs",
-        "os",
-        "child_process",
-        "http",
-        "https",
-        "zlib",
-        "stream",
-        "tls",
-        "path",
-        "hash",
-      ],
-    },
-    plugins: [nodeResolve(), nodeExternals(), nodePolyfills()],
-    optimizeDeps: {
-      exclude: ["@node-rs/argon2", "@node-rs/bcrypt", "hash"],
-    },
-  },
 });

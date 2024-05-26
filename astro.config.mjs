@@ -40,7 +40,7 @@ export default defineConfig({
     },
     plugins: [nodeResolve(), nodeExternals(), nodePolyfills()],
     optimizeDeps: {
-      exclude: ["@node-rs/argon2", "@node-rs/bcrypt"],
+      exclude: ["@node-rs/argon2", "@node-rs/bcrypt", "hash"],
     },
   },
 });

@@ -24,7 +24,6 @@ export default defineConfig({
         events: "rollup-plugin-node-polyfills/polyfills/events",
         stream: "rollup-plugin-node-polyfills/polyfills/stream",
         util: "rollup-plugin-node-polyfills/polyfills/util",
-        crypto: "crypto-browserify",
       },
     },
     plugins: [

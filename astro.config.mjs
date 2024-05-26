@@ -13,9 +13,4 @@ export default defineConfig({
   ],
   output: "server",
   adapter: cloudflare(),
-  vite: {
-    ssr: {
-      external: ["oslo", "nodemailer", "pg"],
-    },
-  },
 });

@@ -19,7 +19,7 @@ export default defineConfig({
   }),
   vite: {
     ssr: {
-      external: ["oslo", "nodemailer", "pg", "astro"], // Añadir 'astro'
+      noExternal: ["oslo", "nodemailer", "pg"], // Añadir 'astro'
     },
     resolve: {
       alias: {

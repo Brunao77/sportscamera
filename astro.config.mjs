@@ -6,7 +6,6 @@ import { nodeResolve } from "@rollup/plugin-node-resolve";
 import nodeExternals from "rollup-plugin-node-externals";
 import nodePolyfills from "rollup-plugin-node-polyfills";
 
-// https://astro.build/config
 export default defineConfig({
   integrations: [
     preact({
@@ -18,14 +17,14 @@ export default defineConfig({
   adapter: cloudflare(),
   vite: {
     ssr: {
-      noExternal: ["oslo", "nodemailer", "pg"], // Asegúrate de incluir 'oslo'
+      noExternal: ["oslo", "nodemailer", "pg", "astro"], // Añadir 'astro'
     },
     resolve: {
       alias: {
         events: "rollup-plugin-node-polyfills/polyfills/events",
         stream: "rollup-plugin-node-polyfills/polyfills/stream",
         util: "rollup-plugin-node-polyfills/polyfills/util",
-        crypto: "rollup-plugin-node-polyfills/polyfills/crypto",
+        crypto: "crypto-browserify",
       },
     },
     plugins: [

@@ -14,7 +14,9 @@ export default defineConfig({
     tailwind(),
   ],
   output: "server",
-  adapter: cloudflare(),
+  adapter: cloudflare({
+    imageService: "cloudflare",
+  }),
   vite: {
     ssr: {
       noExternal: ["oslo", "nodemailer", "pg", "astro"], // Añadir 'astro'

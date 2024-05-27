@@ -10,7 +10,6 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/cloudflare": "^10.2.5",
     "@astrojs/preact": "^3.2.0",
     "@astrojs/tailwind": "^5.1.0",
     "@astrojs/vercel": "^7.6.0",
@@ -25,9 +24,6 @@
     "uuid": "^9.0.1"
   },
   "devDependencies": {
-    "@rollup/plugin-node-resolve": "^15.2.3",
-    "postcss-nesting": "^12.1.1",
-    "rollup-plugin-node-externals": "^7.1.2",
-    "rollup-plugin-node-polyfills": "^0.2.1"
+    "postcss-nesting": "^12.1.1"
   }
 }

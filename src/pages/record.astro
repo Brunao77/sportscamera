@@ -13,135 +13,134 @@ if (!user.payment)
 const { establishment_id } = user
 
 const cameras = await CameraModel.getAll({establishment_id});
-
-
-//await fetch(`http://localhost:3000/run-stream?rtsp=${cameras[1].rtsp_low}`)
-
-/*cameras.forEach(camera=>{
-    fetch(`http://localhost:3000/run-stream?rtsp=${camera.rtsp}`)
-})*/
-
 ---
 
 <LayoutEstablishment title="SportsCamera!">
     <Navbar />
     <section class="bg-white h-full md:rounded-r-xl text-center z-0 w-full overflow-hidden pb-5">
 		<strong class="font-medium text-2xl md:text-3xl text-primary text-nowrap">Grabar</strong>
-        <div class="grid md:grid-cols-2  grid-cols-1  gap-2 p-5 overflow-scroll h-full">
-            {cameras && cameras.map(async ({ field_name, rtsp, rtsp_low }) => {
+        <div id="cameras_container" class="grid md:grid-cols-2 grid-cols-1  gap-2 p-5 overflow-scroll h-full">
+        </div>
+	</section>
+    <script is:inline src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script is:inline define:vars={{ cameras }}>
+        document.addEventListener('DOMContentLoaded', async function(){
+            const camerasContainer = document.getElementById("cameras_container")
+            const chronometers = {}
+            
+            cameras.forEach(async ({ field_name, rtsp, rtsp_low, camera_id }, index) => {
                 let errorServer = ''
                 const response = await fetch(`http://localhost:3000/exist-record?rtsp=${rtsp}`).then(res=> res.text()).catch(error => {
                     console.error('Error de conexión o de red:', error);
                     errorServer = error
                 });
 
+
                 if(errorServer)
-                    return <h1>No esta funcionando el servidor local</h1>
+                    return appendHtml(camerasContainer, '<h1>No esta funcionando el servidor local</h1>')
+
+				if(rtsp_low)
+					await fetch(`http://localhost:3000/run-stream?rtsp=${rtsp_low}`)
+
                 const existRecord = response !== 'false'
 
-                return <div class="flex flex-col w-full h-fit">
-                    <span class="text-start text-bold text-l">{field_name}</span>
-                    <video id={rtsp_low} autoplay muted></video>
-                    <div class="flex items-center gap-2 bg-black p-2">
-                        <button class={`border-none cursor-pointer w-6 h-6 rounded-full bg-${existRecord ? 'red-500' : '[#646464]'} recordstop`} data-state={`${existRecord ? 'stop-record' : 'record'}`}></button>
-                        <span class={`text-[#646464] ${!existRecord && 'hidden'} record_span`}>Grabando</span>
-                        <div class="chronometer text-white hidden">00:00:00</div>
-                    </div>
-                </div>
-            })}
-        </div>
-	</section>
-    <script is:inline src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <script is:inline define:vars={{ cameras }}>
-        const elements = document.getElementsByClassName("recordstop");
+                const html = `<div class="flex flex-col w-full h-fit">
+                        <span class="text-start text-bold text-l">${field_name}</span>
+                        <video id=${rtsp_low} autoplay muted></video>
+                        <div class="flex items-center gap-2 bg-black p-2">
+                            <button class="border-none cursor-pointer w-6 h-6 rounded-full bg-${existRecord ? 'red-500' : '[#646464]'} recordstop" data-state="${existRecord ? 'stop-record' : 'record'}" data-index="${index}"></button>
+                            <span class="text-[#646464] ${!existRecord && 'hidden'} record_span">Grabando</span>
+                            <div class="chronometer text-white hidden">00:00:00</div>
+                        </div>
+                    </div>`
+                appendHtml(camerasContainer,html)
 
-        const chronometers = {}
-        
-        for(let i = 0; i < elements.length; i++){
-            elements[i].addEventListener('click',function(){
-                const { camera_id, rtsp } = cameras[i]
-                const recordSpan = this.parentNode.querySelector('.record_span');
-                const chronometer = this.parentNode.querySelector('.chronometer');
-                if (this.getAttribute('data-state') === 'record'){
-                    this.setAttribute('data-state', 'stop-record');
-                    recordSpan.classList.remove('hidden');
-                    this.classList.remove('bg-[#646464]');
-                    this.classList.add('bg-red-500');
-                    chronometers[rtsp] = {
-                        intervalId: null,
-                        startTime: Date.now(),
-                    };
-                    startChronometer(rtsp, chronometer)
-                    chronometer.classList.remove('hidden')
-                    fetch(`http://localhost:3000/start-record?camera_id=${camera_id}&rtsp=${rtsp}`).then(response => console.log(response))
+                if (Hls.isSupported()) {
+                    const video = document.getElementById(rtsp_low);
+                    const  hls = new Hls();
+                    hls.attachMedia(video);
+                    hls.on(Hls.Events.MEDIA_ATTACHED, function () {
+                        const ip = rtsp_low.match(/rtsp:\/\/admin:password123@([\d.]+):/)[1];
+                        hls.loadSource(`http://localhost:3000/get-stream/${ip}/index.m3u8`);
+                        playVideo()
+                    });
                 }
-                else{
-                    this.setAttribute('data-state', 'record');
-                    recordSpan.classList.add('hidden')
-                    this.classList.remove('bg-red-500');
-                    this.classList.add('bg-[#646464]');
-                    chronometer.classList.add('hidden')
-                    stopChronometer(rtsp)
-                    fetch(`http://localhost:3000/stop-record?rtsp=${rtsp}`).then(response => console.log(response))
-                }
+
+				const button = camerasContainer.querySelector(`button[data-index="${index}"]`);
+				button.addEventListener('click', async function() {
+					const recordSpan = this.parentNode.querySelector('.record_span');
+					const chronometer = this.parentNode.querySelector('.chronometer');
+					if (this.getAttribute('data-state') === 'record') {
+						this.setAttribute('data-state', 'stop-record');
+						recordSpan.classList.remove('hidden');
+						this.classList.remove('bg-[#646464]');
+						this.classList.add('bg-red-500');
+						chronometers[rtsp] = {
+							intervalId: null,
+							startTime: Date.now(),
+						};
+						startChronometer(rtsp, chronometer);
+						chronometer.classList.remove('hidden');
+						await fetch(`http://localhost:3000/start-record?camera_id=${camera_id}&rtsp=${rtsp}`).then(response => console.log(response));
+					} else {
+						this.setAttribute('data-state', 'record');
+						recordSpan.classList.add('hidden');
+						this.classList.remove('bg-red-500');
+						this.classList.add('bg-[#646464]');
+						chronometer.classList.add('hidden');
+						stopChronometer(rtsp);
+						await fetch(`http://localhost:3000/stop-record?rtsp=${rtsp}`).then(response => console.log(response));
+					}
+				});
             })
-        };
 
-        cameras.forEach(({ rtsp_low }) => {
-            if (Hls.isSupported()) {
-                const video = document.getElementById(rtsp_low);
-                const  hls = new Hls();
-                hls.attachMedia(video);
-                hls.on(Hls.Events.MEDIA_ATTACHED, function () {
-                    const ip = rtsp_low.match(/rtsp:\/\/admin:password123@([\d.]+):/)[1];
-                    hls.loadSource(`http://localhost:3000/get-stream/${ip}/index.m3u8`);
-                    playVideo()
-                });
+            function playVideo() {
+                if (!document.hidden) video.play();
             }
-        });
 
-        function playVideo() {
-            if (!document.hidden) {
-            video.play();
+            document.addEventListener('visibilitychange', function() {
+                cameras.forEach(({ rtsp }) => {
+                    const video = document.getElementById(rtsp);
+                    if (document.hidden) video.pause();
+                    else {
+                        video.currentTime = Math.max(0, video.duration - 4);
+                        video.play()
+                    }
+                })
+            });
+
+            function startChronometer(rtsp, element) {
+                const intervalId = setInterval(() => { updateChronometer(rtsp, element) }, 1000);
+                chronometers[rtsp].intervalId = intervalId;
             }
-        }
 
-        document.addEventListener('visibilitychange', function() {
-            cameras.forEach(({ rtsp }) => {
-                const video = document.getElementById(rtsp);
-                if (document.hidden) {
-                    video.pause();
-                } else {
-                    video.currentTime = Math.max(0, video.duration - 4);
-                    video.play()
+            function updateChronometer(rtsp, element) {
+                const chronometer = chronometers[rtsp];
+                const currentTime = Date.now();
+                const elapsedTime = currentTime - chronometer.startTime;
+                const hours = Math.floor(elapsedTime / 3600000);
+                const minutes = Math.floor((elapsedTime % 3600000) / 60000);
+                const seconds = Math.floor((elapsedTime % 60000) / 1000);
+
+                const hoursFormat = hours < 10 ? "0" + hours : hours;
+                const minutesFormat = minutes < 10 ? "0" + minutes : minutes;
+                const secondsFormat = seconds < 10 ? "0" + seconds : seconds;
+
+                element.innerText = hoursFormat + ":" + minutesFormat + ":" + secondsFormat;
+            }
+
+            function stopChronometer(rtsp) {
+                clearInterval(chronometers[rtsp].intervalId);
+                delete chronometers[rtsp]
+            }
+
+            function appendHtml(el, str) {
+                const div = document.createElement('div'); //container to append to
+                div.innerHTML = str;
+                while (div.children.length > 0) {
+                    el.appendChild(div.children[0]);
                 }
-            })
-            
-        });
-
-        function startChronometer(rtsp, element) {
-            const intervalId = setInterval(() => { updateChronometer(rtsp, element) }, 1000);
-            chronometers[rtsp].intervalId = intervalId;
-        }
-
-        function updateChronometer(rtsp, element) {
-            const chronometer = chronometers[rtsp];
-            const currentTime = Date.now();
-            const elapsedTime = currentTime - chronometer.startTime;
-            const hours = Math.floor(elapsedTime / 3600000);
-            const minutes = Math.floor((elapsedTime % 3600000) / 60000);
-            const seconds = Math.floor((elapsedTime % 60000) / 1000);
-
-            const hoursFormat = hours < 10 ? "0" + hours : hours;
-            const minutesFormat = minutes < 10 ? "0" + minutes : minutes;
-            const secondsFormat = seconds < 10 ? "0" + seconds : seconds;
-
-            element.innerText = hoursFormat + ":" + minutesFormat + ":" + secondsFormat;
-        }
-
-        function stopChronometer(rtsp) {
-            clearInterval(chronometers[rtsp].intervalId);
-            delete chronometers[rtsp]
-        }
+            }
+        })
     </script>
 </LayoutEstablishment>

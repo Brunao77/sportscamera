@@ -4,5 +4,5 @@ const { placeholder, type, required, minlength, name, value, maxlength, pattern,
 
 <div class="relative">
 	<slot />
-	<input id={id} type={type} minlength={minlength} maxlength={maxlength} name={name} value={value} required={required} pattern={pattern} class={`bg-white border-primary border-2 outline-0 px-${notSvg ? '4': '10'} py-3 text-${value ? 'black' : 'terciary'} rounded-xl placeholder-terciary disabled:border-primary_disabled`} placeholder={placeholder}></input>
+	<input id={id} type={type} minlength={minlength} maxlength={maxlength} name={name} value={value} required={required} pattern={pattern} class={`bg-white w-full border-primary border-2 outline-0 px-${notSvg ? '4': '10'} py-3 text-${value ? 'black' : 'terciary'} rounded-xl placeholder-terciary disabled:border-primary_disabled`} placeholder={placeholder}></input>
 </div>

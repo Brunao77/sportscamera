@@ -86,7 +86,7 @@ export async function DELETE(context: APIContext){ //DELETE VIDEO FROM TABLE AND
         try {
             const data = await S3.send(new DeleteObjectsCommand(deleteParams));
 
-            return new Response(JSON.stringify({message:"Objetos borrados", data: data.Deleted}), {
+            return new Response(JSON.stringify({start_time}), {
               status: 200
             })
         } catch (err) {

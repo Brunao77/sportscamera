@@ -22,6 +22,10 @@ const { title, width, height } = Astro.props;
 			<main class=`z-10 h-full md:h-full md:w-full flex md:flex-row flex-col-reverse md:rounded-xl`>
 				<slot />
 			</main>
+			<section id="toast_success" class="absolute bg-green-300 bottom-2 right-2 z-40 w-fit h-fit text-white rounded-xl p-2 py-5 flex items-center gap-2 hidden" transition:persist-props>
+				<span class="bg-green-400 rounded-full w-9 h-9 block text-center items-center flex justify-center">✓</span>
+				<span id="toast_info"></span>
+			</section>
 		</div>
 		<style is:global>
 			:root {

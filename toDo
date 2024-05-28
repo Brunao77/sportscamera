@@ -1,7 +1,7 @@
 [ x ] Cronometro en la grabacion se pausa cuando se navega en otras pestanas
-[  ] Cronometro intervalId cuando cambio de pestana al grabar, volver y querer cortar la grabacion
-[  ] Cronometro no guarda el estado cuando se refresca
-[  ] Ver transmision en directo hls
+[  ] Cronometro intervalId cuando cambio de pestana al grabar, volver y querer cortar la grabacion /record
+[  ] Cronometro no guarda el estado cuando se refresca /record
+[  ] Ver transmision en directo hls /record
 [ x ] Servir el video desde el bucket en forma hls
 [ x ] Funcionalidad de crear clips
 [ x ] Crear key unica para cada clip

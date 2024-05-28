@@ -30,6 +30,8 @@ const cameras = await CameraModel.getAll({establishment_id});
         document.addEventListener('astro:page-load', async function(){
             const camerasContainer = document.getElementById("cameras_container")
             const chronometers = {}
+            const toastSuccess = document.getElementById('toast_success')
+            const toastInfo = document.getElementById('toast_info')
             
             cameras.forEach(async ({ field_name, rtsp, rtsp_low, camera_id }, index) => {
                 let errorServer = ''
@@ -95,7 +97,18 @@ const cameras = await CameraModel.getAll({establishment_id});
 						this.classList.add('bg-[#646464]');
 						chronometer.classList.add('hidden');
 						stopChronometer(rtsp);
-						await fetch(`http://localhost:3000/stop-record?rtsp=${rtsp}`).then(response => console.log(response));
+						await fetch(`http://localhost:3000/stop-record?rtsp=${rtsp}`)
+                        .then(async (response) => {
+                            console.log(response)
+                            if(response.status === 200){
+                                const { start_time, end_time } = await response.json()
+                                toastSuccess.classList.remove('hidden')
+                                toastInfo.innerText = `El video desde ${start_time}hs hasta ${end_time}hs ha sido cargado con éxito`
+                                setTimeout(() => {
+                                    toastSuccess.classList.add('hidden');
+                                }, 10000);
+                            }
+                        });
 					}
 				});
 

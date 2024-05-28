@@ -2,15 +2,25 @@ import { convertirFormatoFecha } from "../utils"
 
 export default function ModalForDelete({ listVideos, setListVideos, videoForDelete, setVideoForDelete }) {
     const handleDelete = async () =>{
-        const response = await fetch('/api/videos', {
+        setVideoForDelete(null)
+        await fetch('/api/videos', {
             method:'DELETE',
             body: JSON.stringify({video: videoForDelete})
+        }).then(async (response)=>{
+            if(response.status === 200){
+                const toastSuccess = document.getElementById('toast_success')
+                const toastInfo = document.getElementById('toast_info')
+                const { start_time } = await response.json()
+                toastSuccess.classList.remove('hidden')
+                toastInfo.innerText = `El video desde ${start_time}hs ha sido eliminado con éxito`
+                setTimeout(() => {
+                    toastSuccess.classList.add('hidden');
+                }, 10000);
+
+                const updatedList = listVideos.filter(video => video !== videoForDelete);
+                setListVideos(updatedList);
+            }
         })
-        setVideoForDelete(null)
-        if(response.status === 200){
-            const updatedList = listVideos.filter(video => video !== videoForDelete);
-            setListVideos(updatedList);
-        }
     }
 
     return(<>

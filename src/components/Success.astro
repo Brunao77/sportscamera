@@ -9,7 +9,7 @@ const { message, redirect, hidden} = Astro.props
 
 
 {!hidden && <script define:vars={{ redirect }}>
-                if(redirect )
+                if(redirect)
                     setTimeout(() => {
                         window.location.href = redirect
                     }, 2000);

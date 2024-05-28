@@ -21,12 +21,12 @@ import { S3 } from "../../s3";
 const { video_id } = Astro.params
 
 if(!video_id)
-    return Astro.redirect("/");
+	return Astro.redirect("/");
 
 const video = await VideosModel.getById({ video_id: parseInt(video_id, 10) })
 
 if(!video)
-    return Astro.redirect("/");
+	return Astro.redirect("/");
 
 const { camera_id, date, start_time, end_time, video_url } = video
 
@@ -42,66 +42,66 @@ let success = ''
 let error = ''
 
 if(Astro.request.method === 'POST'){
-    const {title, start, end} = await Astro.request.json();
+	const {title, start, end} = await Astro.request.json();
 
-    const intStart = Math.trunc((start / 20))
+	const intStart = Math.trunc((start / 20))
 
-    const intEnd = Math.trunc((end / 20))
+	const intEnd = Math.trunc((end / 20))
 
-    const TIME_OFFSET = start - (intStart * 20)
+	const TIME_OFFSET = start - (intStart * 20)
 
-    const lastSegmentDuration = end - (intEnd * 20);
+	const lastSegmentDuration = end - (intEnd * 20);
 
-    const newDate = new Date(date);
-    const formatedDate = newDate.toISOString().split('T')[0];
-    const formatedTime = start_time.split(':').slice(0, 2).join('-');
+	const newDate = new Date(date);
+	const formatedDate = newDate.toISOString().split('T')[0];
+	const formatedTime = start_time.split(':').slice(0, 2).join('-');
 
-    const m3u8Content = [
-        '#EXTM3U',
-        '#EXT-X-VERSION:3',
-        `#EXT-X-TARGETDURATION: 20`,
-        `#EXT-X-MEDIA-SEQUENCE: ${intStart}`,
-        `#EXT-X-START:TIME-OFFSET=${TIME_OFFSET}`
-    ];
+	const m3u8Content = [
+		'#EXTM3U',
+		'#EXT-X-VERSION:3',
+		`#EXT-X-TARGETDURATION: 20`,
+		`#EXT-X-MEDIA-SEQUENCE: ${intStart}`,
+		`#EXT-X-START:TIME-OFFSET=${TIME_OFFSET}`
+	];
 
-    for (let i = intStart; i <= intEnd; i++) {
-        const ts = `${camera_id}a${formatedDate}a${formatedTime}a${i}.ts`
-        if(i !== intEnd){
-            m3u8Content.push(`#EXTINF:20.000000,`)
-            m3u8Content.push(ts);
-        }else{
-            m3u8Content.push(`#EXTINF:${lastSegmentDuration},`)
-            m3u8Content.push(ts);
-        }
-    }
+	for (let i = intStart; i <= intEnd; i++) {
+		const ts = `${camera_id}a${formatedDate}a${formatedTime}a${i}.ts`
+		if(i !== intEnd){
+			m3u8Content.push(`#EXTINF:20.000000,`)
+			m3u8Content.push(ts);
+		}else{
+			m3u8Content.push(`#EXTINF:${lastSegmentDuration},`)
+			m3u8Content.push(ts);
+		}
+	}
 
-    m3u8Content.push('#EXT-X-ENDLIST');
+	m3u8Content.push('#EXT-X-ENDLIST');
 
-    const m3u8String = m3u8Content.join('\n');
+	const m3u8String = m3u8Content.join('\n');
 
-    const key = `clip_${uuidv4()}.m3u8`
+	const key = `clip_${uuidv4()}.m3u8`
 
-    try {
-        const params = {
-            Bucket: "sportscamera040621",
-            Key: key,
-            Body: m3u8String,
-            ContentType: "application/vnd.apple.mpegurl"
-        };
+	try {
+		const params = {
+			Bucket: "sportscamera040621",
+			Key: key,
+			Body: m3u8String,
+			ContentType: "application/vnd.apple.mpegurl"
+		};
 
-        await S3.send(new PutObjectCommand(params));
+		await S3.send(new PutObjectCommand(params));
 
-        const ts_start = `${camera_id}a${formatedDate}a${formatedTime}a${intStart}.ts`
-        const ts_end = `${camera_id}a${formatedDate}a${formatedTime}a${intEnd}.ts`
-        
-        const { clip_id } = await ClipsModel.insert({ title, clip_url: key, ts_start, ts_end, date: formatedDate, establishment_name: name, video_id: parseInt(video_id, 10) })
+		const ts_start = `${camera_id}a${formatedDate}a${formatedTime}a${intStart}.ts`
+		const ts_end = `${camera_id}a${formatedDate}a${formatedTime}a${intEnd}.ts`
+		
+		const { clip_id } = await ClipsModel.insert({ title, clip_url: key, ts_start, ts_end, date: formatedDate, establishment_name: name, video_id: parseInt(video_id, 10) })
 
-        return new Response(JSON.stringify({ clip_id }), { status: 200 })
+		return new Response(JSON.stringify({ clip_id }), { status: 200 })
 
-    } catch (error) {
-        error = 'Error al subir el clip'
-        console.error("Error al subir el archivo a S3:", error);
-    }
+	} catch (error) {
+		error = 'Error al subir el clip'
+		console.error("Error al subir el archivo a S3:", error);
+	}
 }
 ---
 
@@ -116,94 +116,96 @@ if(Astro.request.method === 'POST'){
 		<title>Player / Sportscamera!</title>
 	</head>
 	<body class="overflow-hidden h-full">
-        <div id="videoContainer" class="relative h-full bg-black" data-fullscreen="false">
-            <div class='absolute top-1/2 left-1/2 w-20 h-20 border-4 border-white border-l-transparent rounded-full animate-spin hidden' id="spinnerVideo"></div>
-            <video id="video" class="w-full h-full" preload="metadata"></video>
-            <div class="bg-red-700 absolute top-5 left-1/2 -translate-x-1/2 text-white text-2xl rounded px-5 py-2 hidden" id="clip_chronometer">00:00</div>
-            <div id="video-controls" class="absolute bottom-0 w-full flex flex-col px-10 py-5 gap-3" data-state="hidden">
-                <div class="flex justify-between items-end md:items-center">
-                    <div class="flex gap-2 md:items-center md:flex-row flex-col-reverse flex-1">
-                        <button id="info" class="order-2 md:order-none" tabindex="-1"><Info /></button>
-                        <div class="text-white text-md md:text-xl order-3 md:order-none"><span id="current_time">0:00</span> / <span id="duration">0:00:00</span></div>
-                        <button id="clip_list_btn" class="order-1 md:order-none" tabindex="-1"><ClipList /></button>
-                    </div>
-                    <div class="flex items-center gap-2 md:justify-center flex-1">
-                        <button id="track_prev" tabindex="-1"><TrackPrev /></button>
-                        <button id="playpause" data-state="play"><Play id="play_icon" /><Stop hidden id="stop_icon" /></button>
-                        <button id="track_next" tabindex="-1"><TrackNext /></button>
-                        <button class="border-2 h-9 w-9 rounded-full flex items-center justify-center" id="clip_btn" clip-state="start" tabindex="-1"><div class="bg-white h-5 w-5 rounded-full" id="clip_state"></div></button>
-                    </div>
-                    <div class="relative flex md:flex-row flex-col items-end md:items-center gap-2 flex-1 justify-end">
-                        <ul class="absolute bg-[#6A6A6A] top-[-150%] md:top-[-250%] md:left-[80%] flex flex-col hidden text-white rounded" id="rate_opts">
-                            <li class="cursor-pointer hover:bg-[#7E7E7E] px-4 rounded-t" data-rate="0.5">0.5</li>
-                            <li class="cursor-pointer hover:bg-[#7E7E7E] px-4" data-rate="0.75">0.75</li>
-                            <li class="cursor-pointer hover:bg-[#7E7E7E] px-4" data-rate="1">1</li>
-                            <li class="cursor-pointer hover:bg-[#7E7E7E] px-4" data-rate="1.5">1.5</li>
-                            <li class="cursor-pointer hover:bg-[#7E7E7E] px-4 rounded-b" data-rate="2">2</li>
-                        </ul>
-                        <button class="text-white text-xl md:text-3xl font-medium px-5 rounded hover:bg-[#6A6A6A]" id="rate" tabindex="-1">x1</button>
-                        <button id="fs" data-state="maximize" tabindex="-1"><Maximize id="maximize_icon" /><Minimize hidden id="minimize_icon"/></button>
-                    </div>
-                </div>
-                <progress id="progress" class="w-full" min="0" value="0"><span id="progress-bar"></span></progress>
-            </div>
-        </div>
-        <div class={`fixed left-0 top-0 w-full h-full bg-[rgba(0,0,0,0.5)] hidden`} id="filter_bg"></div>
-        <div id="info_modal" class="hidden bg-white absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 flex flex-col rounded text-lg py-2 px-2 gap-2 w-[300px] md:w-[400px]">
-            <div class="flex justify-between items-center"><h1 class="text-[#9F4AA0] text-lg md:text-3xl font-medium">{name}</h1><button class="close_modal font-bold text-red-400 text-2xl">X</button></div>
-            <span>Cancha: {field_name}</span>
-            <span>Dirección: {address}</span>
-            <span>Teléfono: {phone}</span>
-            <span>Día: {convertirFormatoFecha(date)}</span>
-            <span>Horario: {start_time.slice(0,-3)} - {end_time.slice(0,-3)}</span>
-        </div>
-        <div id="clip_modal" class="hidden bg-white absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 flex flex-col rounded text-lg px-10 py-5 ">
-            <div class="flex justify-between items-center gap-5"><h1 class="text-[#9F4AA0] text-lg md:text-3xl font-medium text-nowrap">Crear Clip</h1><button class="close_modal font-bold text-red-400 text-2xl">X</button></div>
-            <span>Ponele un título a tu clip</span>
-            <form class="w-full flex flex-col gap-3" id="save_clip_form">
-                <Input id="clip_title" required placeholder="Título" notSvg />
-                <Button type="submit">
-                    <span id="content_btn">Guardar Clip</span>
-				    <div class='w-6 h-6 border-4 border-ice border-l-transparent rounded-full animate-spin hidden' id="spinner"></div>
-                </Button>
-            </form>
-        </div>
-        <div id="clip_success_modal" class="hidden bg-white absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 flex flex-col rounded text-lg px-10 py-5 gap-5">
-            <div class="flex justify-between items-center gap-5"><h1 class="text-[#9F4AA0] text-lg md:text-3xl font-medium text-nowrap">Clip creado con exito</h1><button class="close_modal font-bold text-red-400 text-2xl">X</button></div>
-            <Button id="copy_link_button">Copiar link</Button>
-            <Button id="view_clip_button">Ver clip</Button>
-        </div>
-        <div id="clip_list_modal" class="h-1/2 overflow-hidden hidden bg-white absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 flex flex-col rounded text-lg py-5 gap-5">
-            <div class="flex justify-between items-center px-2 w-full"><h1 class="text-[#9F4AA0] text-lg md:text-3xl font-medium text-nowrap">Lista de clips</h1><button class="close_modal font-bold text-red-400 text-2xl">X</button></div>
-            <div class="overflow-auto h-full">
-                {clips.length !==0 ? clips.map(({ clip_id, title })=>{
-                    return <div class="flex items-center justify-between w-[350px] px-2"><span>{title}</span><a class="rounded-2xl bg-primary border text-white text-sm py-2 px-5" href={`/clip/${clip_id}`} target="_blank">VER</a></div>
-                }) : <span>No hay clips para este video</span>}
-            </div>
-        </div>
-        <style is:global>
-            progress {
-                overflow:hidden;
-                -moz-border-radius:10px;
-                -webkit-border-radius:10px;
-                border-radius:10px;
-                color:#9F4AA0;
-                cursor:pointer;
-            }
-            progress::-webkit-progress-value {
-                background-color:#9F4AA0;
-            }
+		<div id="videoContainer" class="relative h-full bg-black" data-fullscreen="false">
+			<div class='absolute top-1/2 left-1/2 w-20 h-20 border-4 border-white border-l-transparent rounded-full animate-spin hidden' id="spinnerVideo"></div>
+			<video id="video" class="w-full h-full" preload="metadata"></video>
+			<div class="bg-red-700 absolute top-5 left-1/2 -translate-x-1/2 text-white text-2xl rounded px-5 py-2 hidden" id="clip_chronometer">00:00</div>
+			<div id="video-controls" class="absolute bottom-0 w-full flex flex-col-reverse md:flex-col px-10 py-5 gap-1" data-state="hidden">
+				<progress id="progress" class="w-full" min="0" value="0"><span id="progress-bar"></span></progress>
+				<span id="tooltip" class="absolute  text-white top-[-10px]"></span>
+				<div class="flex justify-between items-end md:items-center">
+					<div class="flex gap-2 md:items-center md:flex-row flex-col-reverse flex-1">
+						<button id="info" class="order-2 md:order-none" tabindex="-1"><Info /></button>
+						<div class="text-white text-md md:text-xl order-3 md:order-none"><span id="current_time">0:00</span> / <span id="duration">0:00:00</span></div>
+						<button id="clip_list_btn" class="order-1 md:order-none" tabindex="-1"><ClipList /></button>
+					</div>
+					<div class="flex items-center gap-2 md:justify-center flex-1">
+						<button id="track_prev" tabindex="-1"><TrackPrev /></button>
+						<button id="playpause" data-state="play"><Play id="play_icon" /><Stop hidden id="stop_icon" /></button>
+						<button id="track_next" tabindex="-1"><TrackNext /></button>
+						<button class="border-2 h-9 w-9 rounded-full flex items-center justify-center" id="clip_btn" clip-state="start" tabindex="-1"><div class="bg-white h-5 w-5 rounded-full" id="clip_state"></div></button>
+					</div>
+					<div class="relative flex md:flex-row flex-col items-end md:items-center gap-2 flex-1 justify-end">
+						<ul class="absolute bg-[#6A6A6A] top-[-150%] md:top-[-250%] md:left-[80%] flex flex-col hidden text-white rounded" id="rate_opts">
+							<li class="cursor-pointer hover:bg-[#7E7E7E] px-4 rounded-t" data-rate="0.5">0.5</li>
+							<li class="cursor-pointer hover:bg-[#7E7E7E] px-4" data-rate="0.75">0.75</li>
+							<li class="cursor-pointer hover:bg-[#7E7E7E] px-4" data-rate="1">1</li>
+							<li class="cursor-pointer hover:bg-[#7E7E7E] px-4" data-rate="1.5">1.5</li>
+							<li class="cursor-pointer hover:bg-[#7E7E7E] px-4 rounded-b" data-rate="2">2</li>
+						</ul>
+						<button class="text-white text-xl md:text-3xl font-medium px-5 rounded hover:bg-[#6A6A6A]" id="rate" tabindex="-1">x1</button>
+						<button id="fs" data-state="maximize" tabindex="-1"><Maximize id="maximize_icon" /><Minimize hidden id="minimize_icon"/></button>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class={`fixed left-0 top-0 w-full h-full bg-[rgba(0,0,0,0.5)] hidden`} id="filter_bg"></div>
+		<div id="info_modal" class="hidden bg-white absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 flex flex-col rounded text-lg py-2 px-2 gap-2 w-[300px] md:w-[400px]">
+			<div class="flex justify-between items-center"><h1 class="text-[#9F4AA0] text-lg md:text-3xl font-medium">{name}</h1><button class="close_modal font-bold text-red-400 text-2xl">X</button></div>
+			<span>Cancha: {field_name}</span>
+			<span>Dirección: {address}</span>
+			<span>Teléfono: {phone}</span>
+			<span>Día: {convertirFormatoFecha(date)}</span>
+			<span>Horario: {start_time.slice(0,-3)} - {end_time.slice(0,-3)}</span>
+		</div>
+		<div id="clip_modal" class="hidden bg-white absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 flex flex-col rounded text-lg px-10 py-5 ">
+			<div class="flex justify-between items-center gap-5"><h1 class="text-[#9F4AA0] text-lg md:text-3xl font-medium text-nowrap">Crear Clip</h1><button class="close_modal font-bold text-red-400 text-2xl">X</button></div>
+			<span>Ponele un título a tu clip</span>
+			<form class="w-full flex flex-col gap-3" id="save_clip_form">
+				<Input id="clip_title" required placeholder="Título" notSvg />
+				<Button type="submit">
+					<span id="content_btn">Guardar Clip</span>
+					<div class='w-6 h-6 border-4 border-ice border-l-transparent rounded-full animate-spin hidden' id="spinner"></div>
+				</Button>
+			</form>
+		</div>
+		<div id="clip_success_modal" class="hidden bg-white absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 flex flex-col rounded text-lg px-10 py-5 gap-5">
+			<div class="flex justify-between items-center gap-5"><h1 class="text-[#9F4AA0] text-lg md:text-3xl font-medium text-nowrap">Clip creado con exito</h1><button class="close_modal font-bold text-red-400 text-2xl">X</button></div>
+			<Button id="copy_link_button">Copiar link</Button>
+			<Button id="view_clip_button">Ver clip</Button>
+		</div>
+		<div id="clip_list_modal" class="h-1/2 overflow-hidden hidden bg-white absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 flex flex-col rounded text-lg py-5 gap-5">
+			<div class="flex justify-between items-center px-2 w-full"><h1 class="text-[#9F4AA0] text-lg md:text-3xl font-medium text-nowrap">Lista de clips</h1><button class="close_modal font-bold text-red-400 text-2xl">X</button></div>
+			<div class="overflow-auto h-full">
+				{clips.length !==0 ? clips.map(({ clip_id, title })=>{
+					return <div class="flex items-center justify-between w-[350px] px-2"><span>{title}</span><a class="rounded-2xl bg-primary border text-white text-sm py-2 px-5" href={`/clip/${clip_id}`} target="_blank">VER</a></div>
+				}) : <span>No hay clips para este video</span>}
+			</div>
+		</div>
+		<style is:global>
+			progress {
+				overflow:hidden;
+				height: 7px;
+				-moz-border-radius:10px;
+				-webkit-border-radius:10px;
+				border-radius:10px;
+				color:#9F4AA0;
+				cursor:pointer;
+			}
+			progress::-webkit-progress-value {
+				background-color:#9F4AA0;
+			}
 			:root {
 				--color-primary: #9F4AA0;
 				--color-secondary: #E3F7FA;
 				--color-white: #fff;
-                --color-terciary: #969696;
+				--color-terciary: #969696;
 				--color-primary-disabled: #ab98ac;
 			}
 			html {
 				font-family: "Ubuntu", system-ui, sans-serif;
 			}
-            @supports selector(::-webkit-scrollbar) {
+			@supports selector(::-webkit-scrollbar) {
 				::-webkit-scrollbar {
 					width: 10px;
 					border-radius: 10px;
@@ -228,367 +230,379 @@ if(Astro.request.method === 'POST'){
 					background: var(--background-image);
 				}
 			}
-        </style>
-        <script is:inline src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-        <script is:inline define:vars={{ video_url }}>
-            const videoContainer = document.getElementById('videoContainer');
-            const video = document.getElementById('video');
-            const playpause = document.getElementById('playpause');
-            const progress = document.getElementById('progress');
-            const progressBar = document.getElementById('progress-bar');
-            const fullscreen = document.getElementById('fs');
-            const playIcon = document.getElementById('play_icon');
-            const stopIcon = document.getElementById('stop_icon');
-            const maximizeIcon = document.getElementById('maximize_icon');
-            const minimizeIcon = document.getElementById('minimize_icon');
-            const trackPrev = document.getElementById('track_prev')
-            const trackNext = document.getElementById('track_next')
-            const currentTime = document.getElementById('current_time')
-            const durationSpan = document.getElementById('duration')
-            const info = document.getElementById('info')
-            const filterBg = document.getElementById('filter_bg')
-            const infoModal = document.getElementById('info_modal')
-            const closeModal = document.getElementsByClassName('close_modal')
-            const rate = document.getElementById('rate')
-            const rateOptions = document.getElementById('rate_opts')
-            const clipBtn = document.getElementById('clip_btn')
-            const clipState = document.getElementById('clip_state')
-            const clipModal = document.getElementById('clip_modal')
-            const clipChronometer = document.getElementById('clip_chronometer')
-            const saveClipForm = document.getElementById('save_clip_form')
-            const clipTitle = document.getElementById('clip_title')
-            const successModal = document.getElementById('clip_success_modal')
-            const contentBtn = document.getElementById('content_btn')
-            const spinner = document.getElementById('spinner')
-            const clipList = document.getElementById('clip_list_btn')
-            const clipListModal = document.getElementById('clip_list_modal')
-            const spinnerVideo = document.getElementById('spinnerVideo')
+		</style>
+		<script is:inline src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+		<script is:inline define:vars={{ video_url }}>
+			const videoContainer = document.getElementById('videoContainer');
+			const video = document.getElementById('video');
+			const playpause = document.getElementById('playpause');
+			const progress = document.getElementById('progress');
+			const progressBar = document.getElementById('progress-bar');
+			const fullscreen = document.getElementById('fs');
+			const playIcon = document.getElementById('play_icon');
+			const stopIcon = document.getElementById('stop_icon');
+			const maximizeIcon = document.getElementById('maximize_icon');
+			const minimizeIcon = document.getElementById('minimize_icon');
+			const trackPrev = document.getElementById('track_prev')
+			const trackNext = document.getElementById('track_next')
+			const currentTime = document.getElementById('current_time')
+			const durationSpan = document.getElementById('duration')
+			const info = document.getElementById('info')
+			const filterBg = document.getElementById('filter_bg')
+			const infoModal = document.getElementById('info_modal')
+			const closeModal = document.getElementsByClassName('close_modal')
+			const rate = document.getElementById('rate')
+			const rateOptions = document.getElementById('rate_opts')
+			const clipBtn = document.getElementById('clip_btn')
+			const clipState = document.getElementById('clip_state')
+			const clipModal = document.getElementById('clip_modal')
+			const clipChronometer = document.getElementById('clip_chronometer')
+			const saveClipForm = document.getElementById('save_clip_form')
+			const clipTitle = document.getElementById('clip_title')
+			const successModal = document.getElementById('clip_success_modal')
+			const contentBtn = document.getElementById('content_btn')
+			const spinner = document.getElementById('spinner')
+			const clipList = document.getElementById('clip_list_btn')
+			const clipListModal = document.getElementById('clip_list_modal')
+			const spinnerVideo = document.getElementById('spinnerVideo')
+			const tooltip = document.getElementById("tooltip")
 
-            let modalOpen = false
-            let currentDurationStartClipSeconds = 0
-            let currentDurationStopClipSeconds = 0
-            
-            if (Hls.isSupported()) {
-                video.play()
-                const  hls = new Hls();
-                hls.attachMedia(video);
-                hls.on(Hls.Events.MEDIA_ATTACHED, function () {
-                    hls.loadSource(`/api/videos/getVideo/${video_url}`);
-                });
-            }
-            
-            spinnerVideo.classList.remove('hidden')
-            video.addEventListener('loadedmetadata', function() {
-                spinnerVideo.classList.add('hidden')
-                video.currentTime = 0
+			let modalOpen = false
+			let currentDurationStartClipSeconds = 0
+			let currentDurationStopClipSeconds = 0
+			
+			if (Hls.isSupported()) {
+				video.play()
+				const  hls = new Hls();
+				hls.attachMedia(video);
+				hls.on(Hls.Events.MEDIA_ATTACHED, function () {
+					hls.loadSource(`/api/videos/getVideo/${video_url}`);
+				});
+			}
+			
+			spinnerVideo.classList.remove('hidden')
+
+			video.addEventListener('loadedmetadata', function() {
+				spinnerVideo.classList.add('hidden')
+				video.currentTime = 0
 				progress.setAttribute('max', video.duration);
-                currentTimeDuration()
+				currentTimeDuration()
 
-                video.addEventListener('timeupdate', function() {
-                    currentTimeDuration()
-                    if (!progress.getAttribute('max')) progress.setAttribute('max', video.duration);
-                    progress.value = video.currentTime;
-                    progressBar.style.width = Math.floor((video.currentTime / video.duration) * 100) + '%';
-                });
+				video.addEventListener('timeupdate', function() {
+					currentTimeDuration()
+					if (!progress.getAttribute('max')) progress.setAttribute('max', video.duration);
+					progress.value = video.currentTime;
+					progressBar.style.width = Math.floor((video.currentTime / video.duration) * 100) + '%';
+				});
 
-                video.addEventListener('click', ()=>{
-                    if (video.paused) video.play();
-                    else video.pause();
-                })
+				video.addEventListener('click', ()=>{
+					if (video.paused) video.play();
+					else video.pause();
+				})
 
-                video.addEventListener('play', function() {
-                    changeButtonState('playpause');
-                }, false);
-                
-                video.addEventListener('pause', function() {
-                    changeButtonState('playpause');
-                }, false);
+				video.addEventListener('play', function() {
+					changeButtonState('playpause');
+				}, false);
+				
+				video.addEventListener('pause', function() {
+					changeButtonState('playpause');
+				}, false);
 
-                video.addEventListener('ended', function(){
-                    if(clipBtn.getAttribute('clip-state') !== 'start') stopClip()
-                })
+				video.addEventListener('ended', function(){
+					if(clipBtn.getAttribute('clip-state') !== 'start') stopClip()
+				})
 
-                clipList.addEventListener('click', ()=>{
-                    clipListModal.classList.remove('hidden')
-                    filterBg.classList.remove('hidden')
-                    modalOpen = true
-                })
+				clipList.addEventListener('click', ()=>{
+					clipListModal.classList.remove('hidden')
+					filterBg.classList.remove('hidden')
+					modalOpen = true
+				})
 
-                saveClipForm.addEventListener('submit', async function(event){
-                    event.preventDefault()
-                    const title = clipTitle.value;
-                    const clipData = {
-                        title,
-                        start: currentDurationStartClipSeconds,
-                        end: currentDurationStopClipSeconds
-                    };
-                    this.disabled = true
-                    contentBtn.classList.add('hidden')
-                    spinner.classList.remove('hidden')
-                    
-                    const res = await fetch(window.location.pathname, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(clipData)
-                    })
-                    if(res.ok){
-                        const { clip_id } =  await res.json()
-                        clipModal.classList.add('hidden')
-                        successModal.classList.remove('hidden')
-                        modalOpen = true
+				saveClipForm.addEventListener('submit', async function(event){
+					event.preventDefault()
+					const title = clipTitle.value;
+					const clipData = {
+						title,
+						start: currentDurationStartClipSeconds,
+						end: currentDurationStopClipSeconds
+					};
+					this.disabled = true
+					contentBtn.classList.add('hidden')
+					spinner.classList.remove('hidden')
+					
+					const res = await fetch(window.location.pathname, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json'
+						},
+						body: JSON.stringify(clipData)
+					})
+					if(res.ok){
+						const { clip_id } =  await res.json()
+						clipModal.classList.add('hidden')
+						successModal.classList.remove('hidden')
+						modalOpen = true
 
-                        const copyLinkButton = document.getElementById('copy_link_button');
-                        const viewClipButton = document.getElementById('view_clip_button');
+						const copyLinkButton = document.getElementById('copy_link_button');
+						const viewClipButton = document.getElementById('view_clip_button');
 
-                        copyLinkButton.addEventListener('click', async () => {
-                            await navigator.clipboard.writeText(`http://localhost:4321/clip/${clip_id}`)
-                        });
+						copyLinkButton.addEventListener('click', async () => {
+							await navigator.clipboard.writeText(`http://localhost:4321/clip/${clip_id}`)
+						});
 
-                        viewClipButton.addEventListener('click', () => {
-                            window.open(`/clip/${clip_id}`, '_blank');
-                        });
-                    }
-                    this.disabled = false
-                    contentBtn.classList.remove('hidden')
-                    spinner.classList.add('hidden')
-                })
+						viewClipButton.addEventListener('click', () => {
+							window.open(`/clip/${clip_id}`, '_blank');
+						});
+					}
+					this.disabled = false
+					contentBtn.classList.remove('hidden')
+					spinner.classList.add('hidden')
+				})
 
-                clipBtn.addEventListener('click', function(){
-                    if(this.getAttribute('clip-state') === 'start') startClip()
-                    else stopClip()
-                })
+				clipBtn.addEventListener('click', function(){
+					if(this.getAttribute('clip-state') === 'start') startClip()
+					else stopClip()
+				})
 
-                const startClip = ()=>{
-                    trackPrev.disabled = true
-                    trackNext.disabled = true
-                    playpause.disabled = true
-                    info.disabled = true
-                    clipList.disabled = true
-                    progress.style.pointerEvents = 'none'
-                    video.style.pointerEvents = 'none'
-                    clipBtn.setAttribute('clip-state', 'stop')
-                    clipState.classList.remove('bg-white')
-                    clipState.classList.add('bg-red-700')
-                    clipChronometer.classList.remove('hidden')
-                    clipChronometer.textContent = '00:00';
-                    currentDurationStartClipSeconds = video.currentTime
-                    startChronometer();
-                    video.play();
-                    changeButtonState('playpause');
-                }
+				const startClip = ()=>{
+					trackPrev.disabled = true
+					trackNext.disabled = true
+					playpause.disabled = true
+					info.disabled = true
+					clipList.disabled = true
+					progress.style.pointerEvents = 'none'
+					video.style.pointerEvents = 'none'
+					clipBtn.setAttribute('clip-state', 'stop')
+					clipState.classList.remove('bg-white')
+					clipState.classList.add('bg-red-700')
+					clipChronometer.classList.remove('hidden')
+					clipChronometer.textContent = '00:00';
+					currentDurationStartClipSeconds = video.currentTime
+					startChronometer();
+					video.play();
+					changeButtonState('playpause');
+				}
 
-                const stopClip = ()=>{
-                    trackPrev.disabled = false
-                    trackNext.disabled = false
-                    playpause.disabled = false
-                    info.disabled = false
-                    clipList.disabled = false
-                    progress.style.pointerEvents = 'auto'
-                    video.style.pointerEvents = 'auto'
-                    clipBtn.setAttribute('clip-state', 'start')
-                    clipState.classList.remove('bg-red-700')
-                    clipState.classList.add('bg-white')
-                    clipChronometer.classList.add('hidden')
-                    currentDurationStopClipSeconds = video.currentTime
-                    stopChronometer();
-                    video.pause()
-                    filterBg.classList.remove('hidden')
-                    clipModal.classList.remove('hidden')
-                    modalOpen = true
-                }
+				const stopClip = ()=>{
+					trackPrev.disabled = false
+					trackNext.disabled = false
+					playpause.disabled = false
+					info.disabled = false
+					clipList.disabled = false
+					progress.style.pointerEvents = 'auto'
+					video.style.pointerEvents = 'auto'
+					clipBtn.setAttribute('clip-state', 'start')
+					clipState.classList.remove('bg-red-700')
+					clipState.classList.add('bg-white')
+					clipChronometer.classList.add('hidden')
+					currentDurationStopClipSeconds = video.currentTime
+					stopChronometer();
+					video.pause()
+					filterBg.classList.remove('hidden')
+					clipModal.classList.remove('hidden')
+					modalOpen = true
+				}
 
-                rate.addEventListener('click', ()=>{
-                    rateOptions.classList.toggle('hidden')
-                })
+				rate.addEventListener('click', ()=>{
+					rateOptions.classList.toggle('hidden')
+				})
 
-                const options = rateOptions.querySelectorAll('li');
-                options.forEach(option => {
-                    option.addEventListener('click', (event) => {
-                        const rateSelected = event.target.getAttribute('data-rate');
-                        video.playbackRate = rateSelected;
-                        rate.innerText = `x${rateSelected}`;
-                        rateOptions.classList.add('hidden');
-                    });
-                });
+				const options = rateOptions.querySelectorAll('li');
+				options.forEach(option => {
+					option.addEventListener('click', (event) => {
+						const rateSelected = event.target.getAttribute('data-rate');
+						video.playbackRate = rateSelected;
+						rate.innerText = `x${rateSelected}`;
+						rateOptions.classList.add('hidden');
+					});
+				});
 
-                filterBg.addEventListener('click',()=>{
-                    filterBg.classList.add('hidden')
-                    if(!infoModal.classList.contains('hidden'))
-                        infoModal.classList.add('hidden')
-                    if(!clipModal.classList.contains('hidden'))
-                        clipModal.classList.add('hidden')
-                    if(!successModal.classList.contains('hidden'))
-                        successModal.classList.add('hidden')
-                    if(!clipListModal.classList.contains('hidden'))
-                        clipListModal.classList.add('hidden')
-                    modalOpen = false
-                })
+				filterBg.addEventListener('click',()=>{
+					filterBg.classList.add('hidden')
+					if(!infoModal.classList.contains('hidden'))
+						infoModal.classList.add('hidden')
+					if(!clipModal.classList.contains('hidden'))
+						clipModal.classList.add('hidden')
+					if(!successModal.classList.contains('hidden'))
+						successModal.classList.add('hidden')
+					if(!clipListModal.classList.contains('hidden'))
+						clipListModal.classList.add('hidden')
+					modalOpen = false
+				})
 
-                for (let i = 0; i < closeModal.length; i++) {
-                    closeModal[i].addEventListener('click', function(){
-                        this.parentNode.parentNode.classList.add('hidden')
-                        filterBg.classList.add('hidden')
-                        modalOpen = false
-                    })
-                }
+				for (let i = 0; i < closeModal.length; i++) {
+					closeModal[i].addEventListener('click', function(){
+						this.parentNode.parentNode.classList.add('hidden')
+						filterBg.classList.add('hidden')
+						modalOpen = false
+					})
+				}
 
-                info.addEventListener('click', ()=>{
-                    filterBg.classList.remove('hidden')
-                    infoModal.classList.remove('hidden')
-                    modalOpen = true
-                })
+				info.addEventListener('click', ()=>{
+					filterBg.classList.remove('hidden')
+					infoModal.classList.remove('hidden')
+					modalOpen = true
+				})
 
-                trackNext.addEventListener('click', ()=>{
-                    video.currentTime += 10;
-                })
+				trackNext.addEventListener('click', ()=>{
+					video.currentTime += 10;
+				})
 
-                trackPrev.addEventListener('click', ()=>{
-                    video.currentTime -= 10;
-                })
+				trackPrev.addEventListener('click', ()=>{
+					video.currentTime -= 10;
+				})
 
-                playpause.addEventListener('click', ()=>{
-                    if (video.paused || video.ended) video.play();
-                    else video.pause();
-                })
+				playpause.addEventListener('click', ()=>{
+					if (video.paused || video.ended) video.play();
+					else video.pause();
+				})
 
-                progress.addEventListener('click', function(e) {
-                    const pos = (e.pageX  - (this.offsetLeft + this.offsetParent.offsetLeft + this.offsetParent.offsetParent.offsetLeft)) / this.offsetWidth;
-                    video.currentTime = pos * video.duration;
-                });
+				progress.addEventListener('click', function(e) {
+					const pos = (e.pageX  - (this.offsetLeft + this.offsetParent.offsetLeft + this.offsetParent.offsetParent.offsetLeft)) / this.offsetWidth;
+					video.currentTime = pos * video.duration;
+				});
 
-                progress.addEventListener('mouseover', function (e) {
-                    const pos = (e.pageX - (this.offsetLeft + this.offsetParent.offsetLeft + this.offsetParent.offsetParent.offsetLeft)) / this.offsetWidth;
-                    const duration = pos * video.duration;
-                    const minutes = Math.floor(duration / 60);
-                    const seconds = Math.floor(duration % 60);
-                    const timeString = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-                    this.setAttribute('title', timeString);
-                });
+				progress.addEventListener('mouseover', function (e) {
+					tooltip.classList.remove('hidden')
+				});
 
-                fullscreen.addEventListener('click', ()=>{
-                    if(fullscreen.getAttribute("data-state") === 'maximize'){
-                        fullscreen.setAttribute("data-state", 'minimize')
-                        minimizeIcon.classList.remove('hidden')
-                        maximizeIcon.classList.add('hidden')
-                        videoContainer.requestFullscreen();
-                    }else{
-                        fullscreen.setAttribute("data-state", 'maximize')
-                        document.exitFullscreen();
-                        minimizeIcon.classList.add('hidden')
-                        maximizeIcon.classList.remove('hidden')
-                    }
-                })
+				progress.addEventListener('mouseout', function (e) {
+					tooltip.classList.add('hidden');
+				});
 
-                document.addEventListener('keydown', function(event) {
-                    if(!modalOpen){
-                        if (event.code === 'ArrowRight') video.currentTime += 10;
-                        if (event.code === 'ArrowLeft') video.currentTime -= 10;
-                        if (event.code === 'Space') {
-                            if (video.paused || video.ended) {
-                                video.play()
-                            }else{
-                                video.pause()
-                            }
-                        }
-                        if (event.code === 'Enter') {
-                            if(clipBtn.getAttribute('clip-state') === 'start') startClip()
-                            else stopClip()
-                        }
-                        if (event.code === 'KeyF') changeButtonState('maximizeminimize')
-                    }else{
-                        if (event.code === 'Escape'){
-                            if(!filterBg.classList.contains('hidden'))
-                                filterBg.classList.add('hidden')
-                            if(!infoModal.classList.contains('hidden'))
-                                infoModal.classList.add('hidden')
-                            if(!clipModal.classList.contains('hidden'))
-                                clipModal.classList.add('hidden')
-                            if(!successModal.classList.contains('hidden'))
-                                successModal.classList.add('hidden')
-                            if(!clipListModal.classList.contains('hidden'))
-                                clipListModal.classList.add('hidden')
-                            modalOpen = false
-                        }
-                    }
-                });
+				progress.addEventListener('mousemove', function (e) {
+					const pos = (e.pageX - (this.offsetLeft + this.offsetParent.offsetLeft + this.offsetParent.offsetParent.offsetLeft)) / this.offsetWidth;
+					const duration = pos * video.duration;
+					const hours = Math.floor(duration / 3600);
+					const minutes = Math.floor((duration % 3600) / 60);
+					const seconds = Math.floor(duration % 60);
+					const timeString = `${hours > 0 ? hours + ':' : ''}${hours > 0 && minutes < 10 ? '0' : ''}${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+					tooltip.textContent = timeString;
+					tooltip.style.left = `${e.pageX}px`;
+				});
+
+				fullscreen.addEventListener('click', ()=>{
+					if(fullscreen.getAttribute("data-state") === 'maximize'){
+						fullscreen.setAttribute("data-state", 'minimize')
+						minimizeIcon.classList.remove('hidden')
+						maximizeIcon.classList.add('hidden')
+						videoContainer.requestFullscreen();
+					}else{
+						fullscreen.setAttribute("data-state", 'maximize')
+						document.exitFullscreen();
+						minimizeIcon.classList.add('hidden')
+						maximizeIcon.classList.remove('hidden')
+					}
+				})
+
+				document.addEventListener('keydown', function(event) {
+					if(!modalOpen){
+						if (event.code === 'ArrowRight') video.currentTime += 10;
+						if (event.code === 'ArrowLeft') video.currentTime -= 10;
+						if (event.code === 'Space') {
+							if (video.paused || video.ended) {
+								video.play()
+							}else{
+								video.pause()
+							}
+						}
+						if (event.code === 'Enter') {
+							if(clipBtn.getAttribute('clip-state') === 'start') startClip()
+							else stopClip()
+						}
+						if (event.code === 'KeyF') changeButtonState('maximizeminimize')
+					}else{
+						if (event.code === 'Escape'){
+							if(!filterBg.classList.contains('hidden'))
+								filterBg.classList.add('hidden')
+							if(!infoModal.classList.contains('hidden'))
+								infoModal.classList.add('hidden')
+							if(!clipModal.classList.contains('hidden'))
+								clipModal.classList.add('hidden')
+							if(!successModal.classList.contains('hidden'))
+								successModal.classList.add('hidden')
+							if(!clipListModal.classList.contains('hidden'))
+								clipListModal.classList.add('hidden')
+							modalOpen = false
+						}
+					}
+				});
 			});
 
-            function changeButtonState(type) {
+			function changeButtonState(type) {
 				if (type == 'playpause') {
 					if (video.paused || video.ended) {
-                        playpause.setAttribute('data-state', 'play');
-                        stopIcon.classList.add('hidden')
-                        playIcon.classList.remove('hidden')
+						playpause.setAttribute('data-state', 'play');
+						stopIcon.classList.add('hidden')
+						playIcon.classList.remove('hidden')
 					}
 					else {
-                        playpause.setAttribute('data-state', 'pause');
-                        stopIcon.classList.remove('hidden')
-                        playIcon.classList.add('hidden')
+						playpause.setAttribute('data-state', 'pause');
+						stopIcon.classList.remove('hidden')
+						playIcon.classList.add('hidden')
 					}
 				}
 				else if (type == 'maximizeminimize') {
-                    if(fullscreen.getAttribute("data-state") === 'maximize'){
-                        fullscreen.setAttribute("data-state", 'minimize')
-                        minimizeIcon.classList.remove('hidden')
-                        maximizeIcon.classList.add('hidden')
-                        videoContainer.requestFullscreen();
-                    }else{
-                        fullscreen.setAttribute("data-state", 'maximize')
-                        minimizeIcon.classList.add('hidden')
-                        maximizeIcon.classList.remove('hidden')
-                        document.exitFullscreen();
-                    }
+					if(fullscreen.getAttribute("data-state") === 'maximize'){
+						fullscreen.setAttribute("data-state", 'minimize')
+						minimizeIcon.classList.remove('hidden')
+						maximizeIcon.classList.add('hidden')
+						videoContainer.requestFullscreen();
+					}else{
+						fullscreen.setAttribute("data-state", 'maximize')
+						minimizeIcon.classList.add('hidden')
+						maximizeIcon.classList.remove('hidden')
+						document.exitFullscreen();
+					}
 				}
 			}
 
-            function currentTimeDuration(){
-                const currTime = Math.round(video.currentTime);
-                const duration = Math.round(video.duration);
-                
-                const currentTimeStr = formatTime(currTime);
-                const durationStr = formatTime(duration);
+			function currentTimeDuration(){
+				const currTime = Math.round(video.currentTime);
+				const duration = Math.round(video.duration);
+				
+				const currentTimeStr = formatTime(currTime);
+				const durationStr = formatTime(duration);
 
-                currentTime.innerText = currentTimeStr;
-                if(durationSpan)
-                    durationSpan.innerText = durationStr;
-            }
+				currentTime.innerText = currentTimeStr;
+				if(durationSpan)
+					durationSpan.innerText = durationStr;
+			}
 
-            function formatTime(time) {
-                let hours = Math.floor(time / 3600);
-                let minutes = Math.floor((time % 3600) / 60);
-                let seconds = time % 60;
+			function formatTime(time) {
+				let hours = Math.floor(time / 3600);
+				let minutes = Math.floor((time % 3600) / 60);
+				let seconds = time % 60;
 
-                if (hours > 0) {
-                    return `${hours}:${(minutes < 10 ? '0' : '') + minutes}:${(seconds < 10 ? '0' : '') + seconds}`;
-                } else {
-                    return `${minutes}:${(seconds < 10 ? '0' : '') + seconds}`;
-                }
-            }
+				if (hours > 0) {
+					return `${hours}:${(minutes < 10 ? '0' : '') + minutes}:${(seconds < 10 ? '0' : '') + seconds}`;
+				} else {
+					return `${minutes}:${(seconds < 10 ? '0' : '') + seconds}`;
+				}
+			}
 
-            let intervalId;
-            let startTime;
+			let intervalId;
+			let startTime;
 
-            function startChronometer() {
-                startTime = Date.now();
-                intervalId = setInterval(() => {
-                    const elapsed = Date.now() - startTime;
-                    const minutes = Math.floor(elapsed / 60000);
-                    const seconds = Math.floor((elapsed % 60000) / 1000);
-                    clipChronometer.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+			function startChronometer() {
+				startTime = Date.now();
+				intervalId = setInterval(() => {
+					const elapsed = Date.now() - startTime;
+					const minutes = Math.floor(elapsed / 60000);
+					const seconds = Math.floor((elapsed % 60000) / 1000);
+					clipChronometer.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
-                    if (elapsed >= 60000) {
-                        clearInterval(intervalId);
-                        startClip()
-                    }
-                }, 1000);
-            }
+					if (elapsed >= 60000) {
+						clearInterval(intervalId);
+						startClip()
+					}
+				}, 1000);
+			}
 
-            function stopChronometer() {
-                clearInterval(intervalId);
-            }
-        </script>
+			function stopChronometer() {
+				clearInterval(intervalId);
+			}
+		</script>
 	</body>
 </html>
 

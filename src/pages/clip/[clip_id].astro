@@ -37,7 +37,9 @@ const formatedDate = newDate.toISOString().split('T')[0];
         <div id="videoContainer" class="relative h-full bg-black" data-fullscreen="false">
             <div class='absolute top-1/2 left-1/2 w-20 h-20 border-4 border-white border-l-transparent rounded-full animate-spin hidden' id="spinnerVideo"></div>
             <video id="video" class="object-cover w-full" preload="metadata"></video>
-            <div id="video-controls" class="absolute inset-x-0 bottom-0 w-full flex flex-col px-10 py-5 gap-3" data-state="hidden">
+            <div id="video-controls" class="absolute inset-x-0 bottom-0 w-full flex flex-col-reverse md:flex-col px-10 py-5 gap-1" data-state="hidden">
+                <progress id="progress" class="w-full" min="0" value="0"><span id="progress-bar"></span></progress>
+                <span id="tooltip" class="absolute  text-white top-[-10px]"></span>
                 <div class="flex justify-between items-center">
                     <div class="flex text-white items-end gap-2">
                         <div><span id="current_time"></span> / <span id="duration"></span></div>
@@ -61,12 +63,12 @@ const formatedDate = newDate.toISOString().split('T')[0];
                         <button id="fs" data-state="maximize"><Maximize id="maximize_icon" /><Minimize hidden id="minimize_icon"/></button>
                     </div>
                 </div>
-                <progress id="progress" class="w-full" min="0" value="0"><span id="progress-bar"></span></progress>
             </div>
         </div>
         <style>
             progress {
                 overflow:hidden;
+                height: 7px;
                 -moz-border-radius:10px;
                 -webkit-border-radius:10px;
                 border-radius:10px;
@@ -113,6 +115,7 @@ const formatedDate = newDate.toISOString().split('T')[0];
             const rate = document.getElementById('rate')
             const rateOptions = document.getElementById('rate_opts')
             const videoSpinner = document.getElementById('spinnerVideo')
+            const tooltip = document.getElementById("tooltip")
 
             if (Hls.isSupported()) {
                 video.play()
@@ -190,13 +193,23 @@ const formatedDate = newDate.toISOString().split('T')[0];
 			});
 
             progress.addEventListener('mouseover', function (e) {
-                const pos = (e.pageX - (this.offsetLeft + this.offsetParent.offsetLeft + this.offsetParent.offsetParent.offsetLeft)) / this.offsetWidth;
-                const duration = pos * video.duration;
-                const minutes = Math.floor(duration / 60);
-                const seconds = Math.floor(duration % 60);
-                const timeString = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-                this.setAttribute('title', timeString);
-            });
+				tooltip.classList.remove('hidden')
+			});
+
+			progress.addEventListener('mouseout', function (e) {
+				tooltip.classList.add('hidden');
+			});
+
+			progress.addEventListener('mousemove', function (e) {
+				const pos = (e.pageX - (this.offsetLeft + this.offsetParent.offsetLeft + this.offsetParent.offsetParent.offsetLeft)) / this.offsetWidth;
+				const duration = pos * video.duration;
+				const hours = Math.floor(duration / 3600);
+				const minutes = Math.floor((duration % 3600) / 60);
+				const seconds = Math.floor(duration % 60);
+				const timeString = `${hours > 0 ? hours + ':' : ''}${hours > 0 && minutes < 10 ? '0' : ''}${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+				tooltip.textContent = timeString;
+				tooltip.style.left = `${e.pageX}px`;
+			});
 
             fullscreen.addEventListener('click', ()=>{
                 if(fullscreen.getAttribute("data-state") === 'maximize'){

@@ -1,6 +1,5 @@
 [ x ] Cronometro en la grabacion se pausa cuando se navega en otras pestanas
-[  ] Cronometro intervalId cuando cambio de pestana al grabar, volver y querer cortar la grabacion /record
-[  ] Cronometro no guarda el estado cuando se refresca /record
+[  ] Cronometro no guarda el estado cuando se refresca, se pierde cuanto lleva grabado y genera problemas al cortar la grabacion /record
 [  ] Ver transmision en directo hls /record
 [  ] Clip se adapte solo a la parte clipeada y no a todo el contenido del .ts /clip
 [ x ] Servir el video desde el bucket en forma hls

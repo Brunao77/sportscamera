@@ -13,6 +13,7 @@ if (!user.payment)
 const { establishment_id } = user
 
 const cameras = await CameraModel.getAll({establishment_id});
+
 ---
 
 <LayoutEstablishment title="Record / SportsCamera!">
@@ -47,8 +48,8 @@ const cameras = await CameraModel.getAll({establishment_id});
                 if(errorServer)
                     return appendHtml(camerasContainer, '<h1>No esta funcionando el servidor local</h1>')
 
-				if(rtsp_low)
-					await fetch(`http://localhost:3000/run-stream?rtsp=${rtsp_low}`)
+				/*if(rtsp_low)
+					await fetch(`http://localhost:3000/run-stream?rtsp=${rtsp_low}`)*/
 
                 const existRecord = response !== 'false'
 

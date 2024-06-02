@@ -38,11 +38,11 @@ const formatedDate = newDate.toISOString().split('T')[0];
             <div class='absolute top-1/2 left-1/2 w-20 h-20 border-4 border-white border-l-transparent rounded-full animate-spin hidden' id="spinnerVideo"></div>
             <video id="video" class="object-cover w-full" preload="metadata"></video>
             <div id="video-controls" class="absolute inset-x-0 bottom-0 w-full flex flex-col-reverse md:flex-col px-10 py-5 gap-1" data-state="hidden">
-                <progress id="progress" class="w-full" min="0" value="0"><span id="progress-bar"></span></progress>
+                <progress id="progress" class="w-full overflow-hidden h-[7px] rounded-lg color-primary cursor-pointer hover:h-[10px]" min="0" value="0"><span id="progress-bar"></span></progress>
                 <span id="tooltip" class="absolute  text-white top-[-10px]"></span>
                 <div class="flex justify-between items-center">
                     <div class="flex text-white items-end gap-2">
-                        <div><span id="current_time"></span> / <span id="duration"></span></div>
+                        <div><span id="current_time">0:00</span> / <span id="duration">0:00</span></div>
                         <span class="text-primary text-2xl">{title}</span>
                         <span>{formatedDate}</span>
                     </div>
@@ -66,17 +66,8 @@ const formatedDate = newDate.toISOString().split('T')[0];
             </div>
         </div>
         <style>
-            progress {
-                overflow:hidden;
-                height: 7px;
-                -moz-border-radius:10px;
-                -webkit-border-radius:10px;
-                border-radius:10px;
-                color:#9F4AA0;
-                cursor:pointer;
-            }
             progress::-webkit-progress-value {
-                background-color:#9F4AA0;
+                background-color: var(--color-primary);
             }
 			:root {
 				--color-primary: #9F4AA0;
@@ -98,6 +89,7 @@ const formatedDate = newDate.toISOString().split('T')[0];
         </style>
         <script is:inline src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
         <script is:inline define:vars={{ clip_url }}>
+        document.addEventListener('DOMContentLoaded',()=>{
             const video = document.getElementById('video')
             const videoContainer = document.getElementById('videoContainer');
             const playpause = document.getElementById('playpause');
@@ -126,7 +118,6 @@ const formatedDate = newDate.toISOString().split('T')[0];
                 });
             }
 
-            // Optionally, disable controls outside the allowed range
             video.addEventListener('seeked', function() {
                 if (video.currentTime < allowedStart || video.currentTime > allowedEnd) {
                 video.currentTime = allowedStart;
@@ -289,7 +280,7 @@ const formatedDate = newDate.toISOString().split('T')[0];
                     return `${minutes}:${(seconds < 10 ? '0' : '') + seconds}`;
                 }
             }
-            
-        </script>
+        })
+S        </script>
     </body>
 </html>

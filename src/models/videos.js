@@ -67,7 +67,7 @@ export class VideosModel {
     try {
       const row = await pool.query(
         "INSERT INTO videos(date, start_time, end_time, video_url, camera_id) VALUES ($1, $2, $3, $4, $5);",
-        [video_id]
+        [date, start_time, end_time, video_url, camera_id]
       );
       return row;
     } catch (error) {

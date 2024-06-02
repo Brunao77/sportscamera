@@ -6,9 +6,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
 	if (context.request.method !== "GET" ) {
 		const originHeader = context.request.headers.get("Origin");
 		const hostHeader = context.request.headers.get("Host");
-		console.log({originHeader, hostHeader})
-
-		if (!originHeader || !hostHeader || !verifyRequestOrigin(originHeader, [hostHeader])) {
+		if (!originHeader || !hostHeader || !verifyRequestOrigin(originHeader, [hostHeader, 'http://localhost:3000'])) {
 			return new Response(null, {
 				status: 403
 			});

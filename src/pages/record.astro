@@ -47,9 +47,10 @@ const cameras = await CameraModel.getAll({establishment_id});
                 if(errorServer)
                     return appendHtml(camerasContainer, '<h1>No esta funcionando el servidor local</h1>')
 
-				/*if(rtsp_low)
-					await fetch(`http://localhost:3000/run-stream?rtsp=${rtsp_low}`)*/
-
+				if(rtsp_low){
+                    await fetch(`http://localhost:3000/run-stream?rtsp=${rtsp_low}`)
+                }
+                
                 const existRecord = response !== 'false'
 
                 const html = `<div class="flex flex-col w-full h-fit">
@@ -63,15 +64,44 @@ const cameras = await CameraModel.getAll({establishment_id});
                     </div>`
                 appendHtml(camerasContainer,html)
 
+                async function checkHlsFileAvailable(ip) {
+                    try {
+                        const response = await fetch(`http://localhost:3000/get-stream/${ip}/index.m3u8`);
+                        return response.status === 200;
+                    } catch (error) {
+                        return false;
+                    }
+                }
+
+                // Función para sondear la disponibilidad del archivo HLS
+                async function pollHlsFile(ip, interval = 500, retries = 20) {
+                    for (let i = 0; i < retries; i++) {
+                        const available = await checkHlsFileAvailable(ip);
+                        if (available) {
+                            return true;
+                        }
+                        await new Promise(resolve => setTimeout(resolve, interval));
+                    }
+                    return false;
+                }
+
                 if (Hls.isSupported()) {
                     const video = document.getElementById(rtsp_low);
-                    const  hls = new Hls();
-                    hls.attachMedia(video);
-                    hls.on(Hls.Events.MEDIA_ATTACHED, function () {
-                        const ip = rtsp_low.match(/rtsp:\/\/admin:password123@([\d.]+):/)[1];
-                        hls.loadSource(`http://localhost:3000/get-stream/${ip}/index.m3u8`);
-                        playVideo()
-                    });
+                    const ip = rtsp_low.match(/rtsp:\/\/admin:password123@([\d.]+):/)[1];
+
+                    const fileAvailable = await pollHlsFile(ip);
+                    if (fileAvailable) {
+                        const hls = new Hls();
+                        hls.attachMedia(video);
+                        hls.on(Hls.Events.MEDIA_ATTACHED, function () {
+                            hls.loadSource(`http://localhost:3000/get-stream/${ip}/index.m3u8`);
+                            hls.on(Hls.Events.MANIFEST_PARSED, function () {
+                                video.play();
+                            });
+                        });
+                    } else {
+                        console.error('No se pudo cargar el archivo HLS a tiempo.');
+                    }
                 }
 
 				const button = camerasContainer.querySelector(`button[data-index="${index}"]`);

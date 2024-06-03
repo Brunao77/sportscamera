@@ -125,6 +125,7 @@ const cameras = await CameraModel.getAll({establishment_id});
 					}
 
 					if(rtsp_low){
+						console.log('AHORAAA')
 						const response = await fetch(`http://localhost:3000/get-thumbnail?rtsp=${rtsp}`)
 						const blob = await response.blob()
 						const urlImg = URL.createObjectURL(blob);

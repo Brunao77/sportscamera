@@ -39,8 +39,8 @@ const cameras = await CameraModel.getAll({establishment_id});
 		</div>
 	</section>
 	<script is:inline src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-	<script>
-		document.addEventListener('DOMContentLoaded', async function(){
+	<script is:inline>
+		document.addEventListener('astro:page-load', async function(){
 			const camerasElements = document.getElementById('cameras_container').childNodes
 			const camerasContainer = document.getElementById("cameras_container")
 			const chronometers = {}

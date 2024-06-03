@@ -55,6 +55,15 @@ const cameras = await CameraModel.getAll({establishment_id});
 				const cameraCont = this.querySelector('.camera_container');
 				const spinnerGeneral = this.querySelector('.spinner_general');
 				let chronometer = {}
+
+				function debounce(func, wait) {
+					let timeout;
+					return function(...args) {
+						const context = this;
+						clearTimeout(timeout);
+						timeout = setTimeout(() => func.apply(context, args), wait);
+					};
+				}
 				
 				const initCamera = async () => {
 					let existRecord;
@@ -96,40 +105,49 @@ const cameras = await CameraModel.getAll({establishment_id});
 				}
 				initCamera()
 
-				recordBtn.addEventListener('click', async () =>{
-					if (recordBtn.getAttribute('data-state') === 'record') {
-						recordBtn.setAttribute('data-state', 'stop-record');
-						recordSpan.classList.remove('hidden');
-						recordBtn.classList.remove('bg-[#646464]');
-						recordBtn.classList.add('bg-red-500');
-						chronometer = {
-							intervalId: null,
-							startTime: Date.now(),
-						};
-						startChronometer();
-						chronometerElement.classList.remove('hidden');
-						await fetch(`http://localhost:3000/start-record?camera_id=${camera_id}&rtsp=${rtsp}`);
-					} else {
-						recordBtn.setAttribute('data-state', 'record');
-						recordSpan.classList.add('hidden');
-						recordBtn.classList.remove('bg-red-500');
-						recordBtn.classList.add('bg-[#646464]');
-						chronometerElement.classList.add('hidden');
-						localStorage.removeItem(rtsp);
-						stopChronometer();
-						await fetch(`http://localhost:3000/stop-record?rtsp=${rtsp}`)
-						.then(async (response) => {
-							if(response.status === 200){
-								const { start_time, end_time } = await response.json()
-								toastSuccess.classList.remove('hidden')
-								toastInfo.innerText = `El video desde ${start_time}hs hasta ${end_time}hs ha sido cargado con éxito`
-								setTimeout(() => {
-									toastSuccess.classList.add('hidden');
-								}, 5000);
-							}
-						});
-					}
-				});
+				function debounce(func, wait) {
+	let timeout;
+	return function(...args) {
+		const context = this;
+		clearTimeout(timeout);
+		timeout = setTimeout(() => func.apply(context, args), wait);
+	};
+}
+
+recordBtn.addEventListener('click', debounce(async () => {
+	if (recordBtn.getAttribute('data-state') === 'record') {
+		recordBtn.setAttribute('data-state', 'stop-record');
+		recordSpan.classList.remove('hidden');
+		recordBtn.classList.remove('bg-[#646464]');
+		recordBtn.classList.add('bg-red-500');
+		chronometer = {
+			intervalId: null,
+			startTime: Date.now(),
+		};
+		startChronometer();
+		chronometerElement.classList.remove('hidden');
+		await fetch(`http://localhost:3000/start-record?camera_id=${camera_id}&rtsp=${rtsp}`);
+	} else {
+		recordBtn.setAttribute('data-state', 'record');
+		recordSpan.classList.add('hidden');
+		recordBtn.classList.remove('bg-red-500');
+		recordBtn.classList.add('bg-[#646464]');
+		chronometerElement.classList.add('hidden');
+		localStorage.removeItem(rtsp);
+		stopChronometer();
+		await fetch(`http://localhost:3000/stop-record?rtsp=${rtsp}`)
+		.then(async (response) => {
+			if(response.status === 200){
+				const { start_time, end_time } = await response.json()
+				toastSuccess.classList.remove('hidden')
+				toastInfo.innerText = `El video desde ${start_time}hs hasta ${end_time}hs ha sido cargado con éxito`
+				setTimeout(() => {
+					toastSuccess.classList.add('hidden');
+				}, 5000);
+			}
+		});
+	}
+}, 500)); // Ajusta el tiempo de debounce según sea necesario
 
 				function startChronometer() {
 					const intervalId = setInterval(() => updateChronometer(), 1000);

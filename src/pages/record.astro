@@ -18,11 +18,11 @@ const cameras = await CameraModel.getAll({establishment_id});
 	<Navbar />
 	<section class="bg-white h-full md:rounded-r-xl text-center z-0 w-full overflow-hidden pb-5">
 		<strong class="font-medium text-2xl md:text-3xl text-primary text-nowrap">Grabar</strong>
-		<div id="cameras_container" class="grid md:grid-cols-2 grid-cols-1  gap-2 p-5 overflow-scroll h-full">
+		<div id="cameras_container" class="grid md:grid-cols-2 grid-cols-1 gap-2 p-5 overflow-scroll h-full">
 			{cameras && cameras.map(({field_name, rtsp, rtsp_low, camera_id}, index)=>(
 				<div class="flex flex-col w-full h-fit" id={rtsp} rtsp-low={rtsp_low} camera-id={camera_id}>
 					<div class="h-96 w-full flex items-center justify-center spinner_general">
-						<div class='w-6 h-6 border-4 border-primary border-l-transparent rounded-full animate-spin '></div>
+						<div class='w-6 h-6 border-4 border-primary border-l-transparent rounded-full animate-spin'></div>
 					</div>
 					<div class="hidden camera_container">
 						<span class="text-start text-bold text-l">{field_name}</span>
@@ -71,7 +71,7 @@ const cameras = await CameraModel.getAll({establishment_id});
 						while (element.firstChild) {
 							element.removeChild(element.firstChild);
 						}
-						appendHtml(camerasContainer, '<div class="h-96 w-full items-center justify-center"><span>No esta funcionando el servidor local</span></div>')
+						appendHtml(element, '<div class="h-96 w-full flex items-center justify-center"><span>No esta funcionando el servidor local</span></div>')
 						continue;
 					}
 					

@@ -44,7 +44,8 @@ export class VideosModel {
       const { rows } = await pool.query(
         `SELECT videos.video_id, videos.date, videos.start_time, videos.end_time, videos.video_url, videos.camera_id, cameras.field_name
          FROM videos, cameras
-         WHERE videos.date = $1 AND videos.camera_id = $2 AND videos.camera_id = cameras.camera_id`,
+         WHERE videos.date = $1 AND videos.camera_id = $2 AND videos.camera_id = cameras.camera_id
+         ORDER BY videos.start_time DESC`,
         [date, camera_id]
       );
       return rows;

@@ -5,26 +5,6 @@ import { S3 } from "../../../s3.js";
 import { ListObjectsCommand, DeleteObjectsCommand } from "@aws-sdk/client-s3";
 import { ClipsModel } from "../../../models/clips.js";
 
-export async function GET(context: APIContext){ //GET ALL VIDEOS FROM ESTABLISHMENT
-    if(!context.locals.session)
-        return new Response(JSON.stringify({message: "Acceso no autorizado"}),{status:401})
-    
-    const { userId: id } = context.locals.session;
-
-    const { establishment_id } = await UserModel.profile({
-      id,
-    });
-
-    if (!establishment_id)
-      return new Response(JSON.stringify({message: "No hay establecimientos relacionados"}), {status:400})
-
-    const videos = await VideosModel.getAll({ establishment_id });
-
-    if (!videos) return new Response(JSON.stringify({message:"No hay videos"}), {status:400})
-
-    return new Response(JSON.stringify({message:"Videos con exito", videos}), {status:200})
-}
-
 export async function DELETE(context: APIContext){ //DELETE VIDEO FROM TABLE AND VIDEO IN BUCKET EXCEPT THE .TS UTILS FOR CLIPS
   const { video } =  await context.request.json()
 

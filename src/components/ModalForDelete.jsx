@@ -15,7 +15,7 @@ export default function ModalForDelete({ listVideos, setListVideos, videoForDele
                 toastInfo.innerText = `El video desde ${start_time}hs ha sido eliminado con éxito`
                 setTimeout(() => {
                     toastSuccess.classList.add('hidden');
-                }, 10000);
+                }, 5000);
 
                 const updatedList = listVideos.filter(video => video !== videoForDelete);
                 setListVideos(updatedList);

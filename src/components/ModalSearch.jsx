@@ -1,7 +1,6 @@
 import { convertirFormatoFecha } from "../utils"
 
 export default function ModalSearch({ selectedVideo, setSelectedVideo }) {
-    console.log(selectedVideo)
     const handleDelete = async () =>{
         const response = await fetch('/api/videos', {
             method:'DELETE',

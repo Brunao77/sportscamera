@@ -20,7 +20,7 @@ const cameras = await CameraModel.getAll({establishment_id});
 		<strong class="font-medium text-2xl md:text-3xl text-primary text-nowrap">Grabar</strong>
 		<div id="cameras_container" class="grid md:grid-cols-2 grid-cols-1 gap-2 p-5 overflow-scroll h-full">
 			{cameras && cameras.map(({field_name, rtsp, rtsp_low, camera_id}, index)=>(
-				<div class="flex flex-col w-full h-fit" id={rtsp} rtsp-low={rtsp_low} camera-id={camera_id}>
+				<camera-container class="flex flex-col w-full h-fit" rtsp={rtsp} rtsp-low={rtsp_low} camera-id={camera_id}>
 					<div class="h-96 w-full flex items-center justify-center spinner_general">
 						<div class='w-6 h-6 border-4 border-primary border-l-transparent rounded-full animate-spin'></div>
 					</div>
@@ -34,13 +34,145 @@ const cameras = await CameraModel.getAll({establishment_id});
 							<div class="chronometer text-white hidden">00:00:00</div>
 						</div>
 					</div>
-				</div>
+				</camera-container>
 			))}
 		</div>
 	</section>
-	<script is:inline src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-	<script is:inline>
-		document.addEventListener('astro:page-load', async function(){
+	<script>
+		const toastSuccess = document.getElementById('toast_success');
+		const toastInfo = document.getElementById('toast_info');
+
+		class CameraContainer extends HTMLElement {
+			constructor() {
+				super();
+				const rtsp = this.getAttribute('rtsp');
+				const camera_id = this.getAttribute('camera-id');
+				const rtsp_low = this.getAttribute('rtsp-low');
+				const recordBtn = this.querySelector('.recordstop');
+				const streamImg = this.querySelector('.stream_img');
+				const recordSpan = this.querySelector('.record_span');
+				const chronometerElement = this.querySelector('.chronometer');
+				const cameraCont = this.querySelector('.camera_container');
+				const spinnerGeneral = this.querySelector('.spinner_general');
+				let chronometer = {}
+				
+				const initCamera = async () => {
+					let existRecord;
+					try {
+						const response = await fetch(`http://localhost:3000/exist-record?rtsp=${rtsp}`).then(res => res.text());
+						existRecord = response !== 'false';
+					} catch (error) {
+						console.error('Error de conexión o de red:', error);
+						while (this.firstChild) {
+							this.removeChild(this.firstChild);
+						}
+						appendHtml('<div class="h-96 w-full flex items-center justify-center"><span>No esta funcionando el servidor local</span></div>');
+						return;
+					}
+					
+					if (existRecord) {
+						recordBtn.classList.remove('bg-[#646464]');
+						recordBtn.classList.add('bg-red-500');
+						recordBtn.setAttribute('data-state', 'stop-record');
+						recordSpan.classList.remove('hidden');
+						chronometer = {
+							intervalId: null,
+							startTime: localStorage.getItem(rtsp),
+						};
+						startChronometer();
+						chronometerElement.classList.remove('hidden');
+					}
+
+					if (rtsp_low) {
+						const response = await fetch(`http://localhost:3000/get-thumbnail?rtsp=${rtsp}`);
+						const blob = await response.blob();
+						const urlImg = URL.createObjectURL(blob);
+						streamImg.src = urlImg;
+						streamImg.classList.remove('hidden');
+					}	
+
+					cameraCont.classList.remove('hidden');
+					spinnerGeneral.classList.add('hidden');
+				}
+				initCamera()
+
+				recordBtn.addEventListener('click', async () =>{
+					if (recordBtn.getAttribute('data-state') === 'record') {
+						recordBtn.setAttribute('data-state', 'stop-record');
+						recordSpan.classList.remove('hidden');
+						recordBtn.classList.remove('bg-[#646464]');
+						recordBtn.classList.add('bg-red-500');
+						chronometer = {
+							intervalId: null,
+							startTime: Date.now(),
+						};
+						startChronometer();
+						chronometerElement.classList.remove('hidden');
+						await fetch(`http://localhost:3000/start-record?camera_id=${camera_id}&rtsp=${rtsp}`);
+					} else {
+						recordBtn.setAttribute('data-state', 'record');
+						recordSpan.classList.add('hidden');
+						recordBtn.classList.remove('bg-red-500');
+						recordBtn.classList.add('bg-[#646464]');
+						chronometerElement.classList.add('hidden');
+						localStorage.removeItem(rtsp);
+						stopChronometer();
+						await fetch(`http://localhost:3000/stop-record?rtsp=${rtsp}`)
+						.then(async (response) => {
+							if(response.status === 200){
+								const { start_time, end_time } = await response.json()
+								toastSuccess.classList.remove('hidden')
+								toastInfo.innerText = `El video desde ${start_time}hs hasta ${end_time}hs ha sido cargado con éxito`
+								setTimeout(() => {
+									toastSuccess.classList.add('hidden');
+								}, 5000);
+							}
+						});
+					}
+				});
+
+				function startChronometer() {
+					const intervalId = setInterval(() => updateChronometer(), 1000);
+					chronometer.intervalId = intervalId;
+				}
+
+				function updateChronometer() {
+					const currentTime = Date.now();
+					const elapsedTime = currentTime - chronometer.startTime;
+					const hours = Math.floor(elapsedTime / 3600000);
+					const minutes = Math.floor((elapsedTime % 3600000) / 60000);
+					const seconds = Math.floor((elapsedTime % 60000) / 1000);
+
+					const hoursFormat = hours < 10 ? "0" + hours : hours;
+					const minutesFormat = minutes < 10 ? "0" + minutes : minutes;
+					const secondsFormat = seconds < 10 ? "0" + seconds : seconds;
+
+					chronometerElement.innerText = hoursFormat + ":" + minutesFormat + ":" + secondsFormat;
+				}
+
+				function stopChronometer() {
+					clearInterval(chronometer.intervalId);
+					chronometer = {};
+				}
+
+				const appendHtml = (str) => {
+					const div = document.createElement('div');
+					div.innerHTML = str;
+					while (div.children.length > 0) {
+						this.appendChild(div.children[0]);
+					}
+				}
+
+				window.addEventListener("beforeunload", ()=>{
+					localStorage.setItem(rtsp, chronometer.startTime)
+				})
+
+			}
+		}
+		customElements.define('camera-container', CameraContainer);
+	</script>
+</LayoutEstablishment>
+<!-- document.addEventListener('astro:page-load', async function(){
 			const camerasElements = document.getElementById('cameras_container').childNodes
 			const camerasContainer = document.getElementById("cameras_container")
 			const chronometers = {}
@@ -110,6 +242,7 @@ const cameras = await CameraModel.getAll({establishment_id});
 							});
 						}
 					});
+
 					if(existRecord){
 						recordBtn.classList.remove('bg-[#646464]')
 						recordBtn.classList.add('bg-red-500')
@@ -215,6 +348,4 @@ const cameras = await CameraModel.getAll({establishment_id});
 					el.appendChild(div.children[0]);
 				}
 			}
-		})
-	</script>
-</LayoutEstablishment>
+		}) -->

@@ -5,3 +5,4 @@
 [ x ] Servir el video desde el bucket en forma hls
 [ x ] Funcionalidad de crear clips
 [ x ] Crear key unica para cada clip
+[   ] Toast Success consistente y apilable /record y /video-list

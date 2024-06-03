@@ -20,7 +20,7 @@ const cameras = await CameraModel.getAll({establishment_id});
 		<strong class="font-medium text-2xl md:text-3xl text-primary text-nowrap">Grabar</strong>
 		<div id="cameras_container" class="grid md:grid-cols-2 grid-cols-1 gap-2 p-5 overflow-scroll h-full">
 			{cameras && cameras.map(({field_name, rtsp, rtsp_low, camera_id}, index)=>(
-				<camera-container class="flex flex-col w-full h-fit" rtsp={rtsp} rtsp-low={rtsp_low} camera-id={camera_id}>
+				<camera-container class="flex flex-col w-full h-fit" rtsp={rtsp} rtsp-low={rtsp_low} camera-id={camera_id} field-name={field_name}>
 					<div class="h-96 w-full flex items-center justify-center spinner_general">
 						<div class='w-6 h-6 border-4 border-primary border-l-transparent rounded-full animate-spin'></div>
 					</div>
@@ -41,6 +41,8 @@ const cameras = await CameraModel.getAll({establishment_id});
 	<script>
 		const toastSuccess = document.getElementById('toast_success');
 		const toastInfo = document.getElementById('toast_info');
+		const spinnerToast = toastSuccess.querySelector('.spinner')
+        const tick = toastSuccess.querySelector('.tick')
 
 		class CameraContainer extends HTMLElement {
 			constructor() {
@@ -48,6 +50,7 @@ const cameras = await CameraModel.getAll({establishment_id});
 				const rtsp = this.getAttribute('rtsp');
 				const camera_id = this.getAttribute('camera-id');
 				const rtsp_low = this.getAttribute('rtsp-low');
+				const fieldName = this.getAttribute('field-name');
 				const recordBtn = this.querySelector('.recordstop');
 				const streamImg = this.querySelector('.stream_img');
 				const recordSpan = this.querySelector('.record_span');
@@ -58,9 +61,11 @@ const cameras = await CameraModel.getAll({establishment_id});
 				
 				const initCamera = async () => {
 					let existRecord;
+					let startTimeRecord
 					try {
-						const response = await fetch(`http://localhost:3000/exist-record?rtsp=${rtsp}`).then(res => res.text());
-						existRecord = response !== 'false';
+						const { exists, start_time } = await fetch(`http://localhost:3000/exist-record?rtsp=${rtsp}`).then(res => res.json());
+						existRecord = exists
+						startTimeRecord = start_time
 					} catch (error) {
 						console.error('Error de conexión o de red:', error);
 						while (this.firstChild) {
@@ -77,7 +82,7 @@ const cameras = await CameraModel.getAll({establishment_id});
 						recordSpan.classList.remove('hidden');
 						chronometer = {
 							intervalId: null,
-							startTime: localStorage.getItem(rtsp),
+							startTime: startTimeRecord,
 						};
 						startChronometer();
 						chronometerElement.classList.remove('hidden');
@@ -115,14 +120,16 @@ const cameras = await CameraModel.getAll({establishment_id});
 						recordBtn.classList.remove('bg-red-500');
 						recordBtn.classList.add('bg-[#646464]');
 						chronometerElement.classList.add('hidden');
-						localStorage.removeItem(rtsp);
 						stopChronometer();
+						toastInfo.innerText = `Subiendo video de la cancha ${fieldName}`
+        				toastSuccess.classList.remove('hidden')
 						await fetch(`http://localhost:3000/stop-record?rtsp=${rtsp}`)
 						.then(async (response) => {
 							if(response.status === 200){
 								const { start_time, end_time } = await response.json()
-								toastSuccess.classList.remove('hidden')
-								toastInfo.innerText = `El video desde ${start_time}hs hasta ${end_time}hs ha sido cargado con éxito`
+								spinnerToast.classList.add('hidden')
+                				tick.classList.remove('hidden')
+								toastInfo.innerText = `El video desde ${start_time}hs hasta ${end_time}hs se ha subido con éxito`
 								setTimeout(() => {
 									toastSuccess.classList.add('hidden');
 								}, 5000);
@@ -162,190 +169,8 @@ const cameras = await CameraModel.getAll({establishment_id});
 						this.appendChild(div.children[0]);
 					}
 				}
-
-				window.addEventListener("beforeunload", ()=>{
-					localStorage.setItem(rtsp, chronometer.startTime)
-				})
-
 			}
 		}
 		customElements.define('camera-container', CameraContainer);
 	</script>
 </LayoutEstablishment>
-<!-- document.addEventListener('astro:page-load', async function(){
-			const camerasElements = document.getElementById('cameras_container').childNodes
-			const camerasContainer = document.getElementById("cameras_container")
-			const chronometers = {}
-			const toastSuccess = document.getElementById('toast_success')
-			const toastInfo = document.getElementById('toast_info')
-
-			for (let i = 0; i < camerasElements.length; i++) {
-				const element = camerasElements[i];
-				const rtsp = element.id
-
-				if(rtsp){
-					const recordBtn = element.querySelector('.recordstop')
-					const streamImg = element.querySelector('.stream_img')
-					//const video = element.querySelector('video')
-					const recordSpan = element.querySelector('.record_span')
-					const chronometer = element.querySelector('.chronometer');
-					const camera_id = element.getAttribute('camera-id')
-					const rtsp_low = element.getAttribute('rtsp-low')
-					const cameraCont = element.querySelector('.camera_container');
-					const spinnerGeneral = element.querySelector('.spinner_general');
-
-					let existRecord
-					try {
-						const response = await fetch(`http://localhost:3000/exist-record?rtsp=${rtsp}`).then(res=> res.text())
-						existRecord = response !== 'false'
-					} catch (error) {
-						console.error('Error de conexión o de red:', error);
-						while (element.firstChild) {
-							element.removeChild(element.firstChild);
-						}
-						appendHtml(element, '<div class="h-96 w-full flex items-center justify-center"><span>No esta funcionando el servidor local</span></div>')
-						continue;
-					}
-					
-					/*	LISTENERS BTN	*/
-					recordBtn.addEventListener('click', async function() {
-						if (this.getAttribute('data-state') === 'record') {
-							this.setAttribute('data-state', 'stop-record');
-							recordSpan.classList.remove('hidden');
-							this.classList.remove('bg-[#646464]');
-							this.classList.add('bg-red-500');
-							chronometers[rtsp] = {
-								intervalId: null,
-								startTime: Date.now(),
-							};
-							startChronometer(rtsp, chronometer);
-							chronometer.classList.remove('hidden');
-							await fetch(`http://localhost:3000/start-record?camera_id=${camera_id}&rtsp=${rtsp}`);
-						} else {
-							this.setAttribute('data-state', 'record');
-							recordSpan.classList.add('hidden');
-							this.classList.remove('bg-red-500');
-							this.classList.add('bg-[#646464]');
-							chronometer.classList.add('hidden');
-							localStorage.removeItem(rtsp);
-							stopChronometer(rtsp);
-							await fetch(`http://localhost:3000/stop-record?rtsp=${rtsp}`)
-							.then(async (response) => {
-								if(response.status === 200){
-									const { start_time, end_time } = await response.json()
-									toastSuccess.classList.remove('hidden')
-									toastInfo.innerText = `El video desde ${start_time}hs hasta ${end_time}hs ha sido cargado con éxito`
-									setTimeout(() => {
-										toastSuccess.classList.add('hidden');
-									}, 5000);
-								}
-							});
-						}
-					});
-
-					if(existRecord){
-						recordBtn.classList.remove('bg-[#646464]')
-						recordBtn.classList.add('bg-red-500')
-						recordBtn.setAttribute('data-state', 'stop-record')
-						recordSpan.classList.remove('hidden')
-						chronometers[rtsp] = {
-							intervalId: null,
-							startTime: localStorage.getItem(rtsp),
-						};
-						startChronometer(rtsp, chronometer);
-						chronometer.classList.remove('hidden')
-					}
-
-					if(rtsp_low){
-						const response = await fetch(`http://localhost:3000/get-thumbnail?rtsp=${rtsp}`)
-						const blob = await response.blob()
-						const urlImg = URL.createObjectURL(blob);
-						streamImg.src = urlImg
-						streamImg.classList.remove('hidden')
-
-						/* LIVE STREAM INTO REPRODUCTOR
-						
-						await fetch(`http://localhost:3000/run-stream?rtsp=${rtsp_low}`)
-						
-						async function checkHlsFileAvailable(ip) {
-							try {
-								const response = await fetch(`http://localhost:3000/get-stream/${ip}/index.m3u8`);
-								return response.status === 200;
-							} catch (error) {
-								return false;
-							}
-						}
-
-						async function pollHlsFile(ip, interval = 500, retries = 20) {
-							for (let i = 0; i < retries; i++) {
-								const available = await checkHlsFileAvailable(ip);
-								if (available) {
-									return true;
-								}
-								await new Promise(resolve => setTimeout(resolve, interval));
-							}
-							return false;
-						}
-
-						if (Hls.isSupported()) {
-							const ip = rtsp_low.match(/rtsp:\/\/admin:password123@([\d.]+):/)[1];
-
-							const fileAvailable = await pollHlsFile(ip);
-							if (fileAvailable) {
-								const hls = new Hls();
-								hls.attachMedia(video);
-								hls.on(Hls.Events.MEDIA_ATTACHED, function () {
-									hls.loadSource(`http://localhost:3000/get-stream/${ip}/index.m3u8`);
-									hls.on(Hls.Events.MANIFEST_PARSED, function () {
-										video.play();
-									});
-								});
-							} else {
-								console.error('No se pudo cargar el archivo HLS a tiempo.');
-							}
-						}*/
-					}
-					cameraCont.classList.remove('hidden')
-					spinnerGeneral.classList.add('hidden')
-				}
-			}
-
-			window.addEventListener("beforeunload", ()=>{
-				Object.keys(chronometers).forEach(key => {
-					localStorage.setItem(key, chronometers[key].startTime)
-				});
-			})
-
-			function startChronometer(rtsp, element) {
-				const intervalId = setInterval(() => { updateChronometer(rtsp, element) }, 1000);
-				chronometers[rtsp].intervalId = intervalId;
-			}
-
-			function updateChronometer(rtsp, element) {
-				const chronometer = chronometers[rtsp];
-				const currentTime = Date.now();
-				const elapsedTime = currentTime - chronometer.startTime;
-				const hours = Math.floor(elapsedTime / 3600000);
-				const minutes = Math.floor((elapsedTime % 3600000) / 60000);
-				const seconds = Math.floor((elapsedTime % 60000) / 1000);
-
-				const hoursFormat = hours < 10 ? "0" + hours : hours;
-				const minutesFormat = minutes < 10 ? "0" + minutes : minutes;
-				const secondsFormat = seconds < 10 ? "0" + seconds : seconds;
-
-				element.innerText = hoursFormat + ":" + minutesFormat + ":" + secondsFormat;
-			}
-
-			function stopChronometer(rtsp) {
-				clearInterval(chronometers[rtsp].intervalId);
-				delete chronometers[rtsp]
-			}
-			
-			function appendHtml(el, str) {
-				const div = document.createElement('div'); //container to append to
-				div.innerHTML = str;
-				while (div.children.length > 0) {
-					el.appendChild(div.children[0]);
-				}
-			}
-		}) -->

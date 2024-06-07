@@ -12,5 +12,4 @@ export async function POST(context: APIContext){
         console.error(error);
         return new Response('Error al procesar la solicitud', { status: 500 });
     }
-    
 }

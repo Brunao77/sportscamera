@@ -1,8 +1,13 @@
 [ x ] Cronometro en la grabacion se pausa cuando se navega en otras pestanas
 [ x ] Cronometro no guarda el estado cuando se refresca, se pierde cuanto lleva grabado y genera problemas al cortar la grabacion /record
 [ x ] Ver transmision en directo hls /record 
-[  ] Clip se adapte solo a la parte clipeada y no a todo el contenido del .ts /clip
+[ x ] Clip se adapte solo a la parte clipeada y no a todo el contenido del .ts /clip
+[ x ] No esta devolviendo bien el response /api/clip
+[ x ] UI no es igual a /player /clip
+[ x ] Arreglar al minuto se pause y ejecute start clip /player
+[ x ] Ajustar rutas y eliminar archivos tmp /player
 [ x ] Servir el video desde el bucket en forma hls
 [ x ] Funcionalidad de crear clips
 [ x ] Crear key unica para cada clip
 [   ] Toast Success consistente y apilable /record y /video-list
+[  ] Arreglar close modal /player

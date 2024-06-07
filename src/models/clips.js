@@ -3,17 +3,16 @@ import { pool } from "./db.js";
 export class ClipsModel {
   static async insert({
     title,
+    key,
     clip_url,
-    ts_start,
-    ts_end,
     date,
     establishment_name,
     video_id,
   }) {
     try {
       const { rows } = await pool.query(
-        "INSERT INTO clips (title, clip_url, ts_start, ts_end, date, establishment_name, video_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING clip_id",
-        [title, clip_url, ts_start, ts_end, date, establishment_name, video_id]
+        "INSERT INTO clips (title, key, clip_url, date, establishment_name, video_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING clip_id",
+        [title, key, clip_url, date, establishment_name, video_id]
       );
       return rows[0];
     } catch (error) {

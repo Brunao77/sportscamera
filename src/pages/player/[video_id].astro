@@ -11,12 +11,17 @@ import { CameraModel } from "../../models/camera";
 import { EstablishmentModel } from "../../models/establishment";
 import { convertirFormatoFecha } from "../../utils"
 import Input from "../../components/Input.astro"
-import Button from "../../components/Button.astro";
 import { ClipsModel } from "../../models/clips"
-import { PutObjectCommand } from "@aws-sdk/client-s3"
-import { v4 as uuidv4 } from 'uuid'
 import ClipList from "../../icons/ClipList.astro";
-import { S3 } from "../../s3";
+import { S3 } from '../../s3.js';
+import { PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3"
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import ffmpeg from 'fluent-ffmpeg';
+import { Writable } from 'stream';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { v4 as uuidv4 } from 'uuid'
 
 const { video_id } = Astro.params
 
@@ -38,69 +43,136 @@ const { name, address, phone } = await EstablishmentModel.getById({ establishmen
 
 const clips = await ClipsModel.getAllByVideoId({ video_id: parseInt(video_id, 10) })
 
-let success = ''
-let error = ''
-
 if(Astro.request.method === 'POST'){
-	const {title, start, end} = await Astro.request.json();
-
-	const intStart = Math.trunc((start / 20))
-
-	const intEnd = Math.trunc((end / 20))
-
-	const TIME_OFFSET = start - (intStart * 20)
-
-	const lastSegmentDuration = end - (intEnd * 20);
-
-	const newDate = new Date(date);
-	const formatedDate = newDate.toISOString().split('T')[0];
-	const formatedTime = start_time.split(':').slice(0, 2).join('-');
-
-	const m3u8Content = [
-		'#EXTM3U',
-		'#EXT-X-VERSION:3',
-		`#EXT-X-TARGETDURATION: 20`,
-		`#EXT-X-MEDIA-SEQUENCE: ${intStart}`,
-		`#EXT-X-START:TIME-OFFSET=${TIME_OFFSET}`
-	];
-
-	for (let i = intStart; i <= intEnd; i++) {
-		const ts = `${camera_id}a${formatedDate}a${formatedTime}a${i}.ts`
-		if(i !== intEnd){
-			m3u8Content.push(`#EXTINF:20.000000,`)
-			m3u8Content.push(ts);
-		}else{
-			m3u8Content.push(`#EXTINF:${lastSegmentDuration},`)
-			m3u8Content.push(ts);
-		}
-	}
-
-	m3u8Content.push('#EXT-X-ENDLIST');
-
-	const m3u8String = m3u8Content.join('\n');
-
-	const key = `clip_${uuidv4()}.m3u8`
-
 	try {
-		const params = {
-			Bucket: "sportscamera040621",
-			Key: key,
-			Body: m3u8String,
-			ContentType: "application/vnd.apple.mpegurl"
+		const { title, start, end } = await Astro.request.json()
+
+		const __filename = fileURLToPath(import.meta.url);
+		const __dirname = path.dirname(__filename);
+		const root = path.resolve(__dirname, "..", "..", "..")
+
+		const intStart = Math.trunc((start / 20));
+		const intEnd = Math.trunc((end / 20));
+
+		const TIME_OFFSET = start - (intStart * 20);
+
+		const newDate = new Date(date);
+		const formatedDate = newDate.toISOString().split('T')[0];
+		const formatedTime = start_time.split(':').slice(0, 2).join('-');
+
+		const downloadSegment = async (ts) => {
+			const params = {
+				Bucket: import.meta.env.BUCKET_NAME,
+				Key: ts
+			};
+			const { Body } = await S3.send(new GetObjectCommand(params));
+			const redeableStream = Body.transformToWebStream()
+			const localPath = path.join(root,'/tmp', ts);
+			const writeStream = fs.createWriteStream(localPath);
+			const writeableStream = Writable.toWeb(writeStream)
+			redeableStream.pipeTo(writeableStream)
+
+			return localPath;
 		};
 
-		await S3.send(new PutObjectCommand(params));
+		const deleteFile = (filePath) => {
+			return new Promise((resolve, reject) => {
+					fs.unlink(filePath, (err) => {
+							if (err) {
+									reject(err);
+							} else {
+									resolve();
+							}
+					});
+			});
+		};
 
-		const ts_start = `${camera_id}a${formatedDate}a${formatedTime}a${intStart}.ts`
-		const ts_end = `${camera_id}a${formatedDate}a${formatedTime}a${intEnd}.ts`
-		
-		const { clip_id } = await ClipsModel.insert({ title, clip_url: key, ts_start, ts_end, date: formatedDate, establishment_name: name, video_id: parseInt(video_id, 10) })
+		const m3u8Content = [
+				'#EXTM3U',
+				'#EXT-X-VERSION:3',
+				`#EXT-X-TARGETDURATION: 20`,
+				`#EXT-X-MEDIA-SEQUENCE: ${intStart}`,
+		];
 
-		return new Response(JSON.stringify({ clip_id }), { status: 200 })
+		const segments = [];
+		for (let i = intStart; i <= intEnd; i++) {
+				const ts = `${camera_id}a${formatedDate}a${formatedTime}a${i}.ts`;
+				segments.push(await downloadSegment(ts));
+				m3u8Content.push(`#EXTINF:20.000000,`)
+				m3u8Content.push(ts);
+		}
+		m3u8Content.push('#EXT-X-ENDLIST');
 
+		const m3u8String = m3u8Content.join('\n');
+
+		const clipName =  `clip_${uuidv4()}`
+
+		const m3u8Path = path.join(root,'/tmp', `${clipName}.m3u8`);
+		const writeStream = fs.createWriteStream(m3u8Path);
+		const m3u8 = Buffer.from(m3u8String)
+		writeStream.write(m3u8);
+		writeStream.end();
+
+		const outputFilePath = path.join(root, '/tmp', `${clipName}.mp4`);
+
+		const response = await new Promise((resolve, reject) => {
+      ffmpeg()
+        .input(m3u8Path)
+        .setStartTime(TIME_OFFSET)
+        .duration(end - start)
+        .outputOptions('-c copy')
+        .output(outputFilePath)
+        .on('end', async () => {
+          try {
+            const clipKey = `${clipName}.mp4`;
+
+            const fileStream = fs.createReadStream(outputFilePath);
+            const uploadParams = {
+                Bucket: import.meta.env.BUCKET_NAME,
+                Key: clipKey,
+                Body: fileStream,
+                ContentType: "video/mp4"
+            };
+
+            await S3.send(new PutObjectCommand(uploadParams));
+
+            const getObjectParams = {
+                Bucket: import.meta.env.BUCKET_NAME,
+                Key: clipKey
+            };
+
+            const command = new GetObjectCommand(getObjectParams);
+            const url = await getSignedUrl(S3, command, { expiresIn: 604800 });
+
+            const { clip_id } = await ClipsModel.insert({
+                title,
+                key: clipKey,
+                clip_url: url,
+                date: formatedDate,
+                establishment_name: name,
+                video_id: parseInt(video_id, 10)
+            });
+
+						await Promise.all(
+                segments.map((segment) => deleteFile(segment))
+            );
+            await deleteFile(m3u8Path);
+						await deleteFile(outputFilePath);
+
+            resolve(new Response(JSON.stringify({ clipId: clip_id }), { status: 200 }));
+          } catch (error) {
+              reject(error);
+          }
+        })
+        .on('error', (err) => {
+            reject(err);
+        })
+        .run();
+        });
+      return response;
 	} catch (error) {
-		error = 'Error al subir el clip'
-		console.error("Error al subir el archivo a S3:", error);
+		console.error(error);
+		return new Response('Error al procesar la solicitud', { status: 500 });
 	}
 }
 ---
@@ -118,68 +190,71 @@ if(Astro.request.method === 'POST'){
 	<body class="overflow-hidden h-full">
 		<div id="videoContainer" class="relative h-full bg-black" data-fullscreen="false">
 			<div class='absolute top-1/2 left-1/2 w-20 h-20 border-4 border-white border-l-transparent rounded-full animate-spin hidden' id="spinnerVideo"></div>
-			<video id="video" class="w-full h-full" preload="metadata"></video>
+			<video id="video" class="object-cover w-full" preload="metadata"></video>
 			<div class="bg-red-700 absolute top-5 left-1/2 -translate-x-1/2 text-white text-2xl rounded px-5 py-2 hidden" id="clip_chronometer">00:00</div>
-			<div id="video-controls" class="absolute bottom-0 w-full flex flex-col-reverse md:flex-col px-10 py-5 gap-1" data-state="hidden">
+			<div id="video-controls" class="absolute bottom-0 w-full flex flex-col px-3 py-1 gap-1" data-state="hidden">
 				<progress id="progress" class="w-full overflow-hidden h-[7px] rounded-lg color-primary cursor-pointer hover:h-[10px]" min="0" value="0"><span id="progress-bar"></span></progress>
-				<span id="tooltip" class="absolute  text-white top-[-10px]"></span>
-				<div class="flex justify-between items-end md:items-center">
-					<div class="flex gap-2 md:items-center md:flex-row flex-col-reverse flex-1">
-						<button id="info" class="order-2 md:order-none" tabindex="-1"><Info /></button>
-						<div class="text-white text-md md:text-xl order-3 md:order-none"><span id="current_time">0:00</span> / <span id="duration">0:00:00</span></div>
-						<button id="clip_list_btn" class="order-1 md:order-none" tabindex="-1"><ClipList /></button>
-					</div>
-					<div class="flex items-center gap-2 md:justify-center flex-1">
+				<span id="tooltip" class="absolute text-white top-[-50%]"></span>
+				<div class="flex justify-between items-end md:items-center px-2">
+					<div class="flex gap-2 md:gap-5 items-center flex-row">
 						<button id="track_prev" tabindex="-1"><TrackPrev /></button>
 						<button id="playpause" data-state="play"><Play id="play_icon" /><Stop hidden id="stop_icon" /></button>
 						<button id="track_next" tabindex="-1"><TrackNext /></button>
-						<button class="border-2 h-9 w-9 rounded-full flex items-center justify-center" id="clip_btn" clip-state="start" tabindex="-1"><div class="bg-white h-5 w-5 rounded-full" id="clip_state"></div></button>
+						<button class="border-2 h-6 w-6 rounded-full flex items-center justify-center" id="clip_btn" clip-state="start" tabindex="-1"><div class="bg-white h-3 w-3 rounded-full" id="clip_state"></div></button>
+						<div class="text-white text-md order-3 md:order-none"><span id="current_time">0:00</span> / <span id="duration">0:00:00</span></div>
 					</div>
-					<div class="relative flex md:flex-row flex-col items-end md:items-center gap-2 flex-1 justify-end">
-						<ul class="absolute bg-[#6A6A6A] top-[-150%] md:top-[-250%] md:left-[80%] flex flex-col hidden text-white rounded" id="rate_opts">
-							<li class="cursor-pointer hover:bg-[#7E7E7E] px-4 rounded-t" data-rate="0.5">0.5</li>
-							<li class="cursor-pointer hover:bg-[#7E7E7E] px-4" data-rate="0.75">0.75</li>
-							<li class="cursor-pointer hover:bg-[#7E7E7E] px-4" data-rate="1">1</li>
-							<li class="cursor-pointer hover:bg-[#7E7E7E] px-4" data-rate="1.5">1.5</li>
-							<li class="cursor-pointer hover:bg-[#7E7E7E] px-4 rounded-b" data-rate="2">2</li>
-						</ul>
-						<button class="text-white text-xl md:text-3xl font-medium px-5 rounded hover:bg-[#6A6A6A]" id="rate" tabindex="-1">x1</button>
+					<div class="flex flex-row items-center gap-2 md:gap-5">
+						<button id="info" tabindex="-1"><Info /></button>
+						<button id="clip_list_btn" tabindex="-1"><ClipList /></button>
+						<button class="text-white text-lg font-medium rounded" id="rate" tabindex="-1">x1</button>
 						<button id="fs" data-state="maximize" tabindex="-1"><Maximize id="maximize_icon" /><Minimize hidden id="minimize_icon"/></button>
 					</div>
 				</div>
 			</div>
 		</div>
-		<div class={`fixed left-0 top-0 w-full h-full bg-[rgba(0,0,0,0.5)] hidden`} id="filter_bg"></div>
-		<div id="info_modal" class="hidden bg-white absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 flex flex-col rounded text-lg py-2 px-2 gap-2 w-[300px] md:w-[400px]">
-			<div class="flex justify-between items-center"><h1 class="text-[#9F4AA0] text-lg md:text-3xl font-medium">{name}</h1><button class="close_modal font-bold text-red-400 text-2xl">X</button></div>
-			<span>Cancha: {field_name}</span>
-			<span>Dirección: {address}</span>
-			<span>Teléfono: {phone}</span>
-			<span>Día: {convertirFormatoFecha(date)}</span>
-			<span>Horario: {start_time.slice(0,-3)} - {end_time.slice(0,-3)}</span>
+		<div id="modal_container" class="hidden absolute bg-black/[.5] w-[300px] right-[1%] bottom-[8%] rounded py-1 px-2 text-white">
+			<div id="info_modal" class="hidden flex flex-col gap-1">
+				<h1 class="text-[#9F4AA0] font-medium truncate" title={name}>{name}</h1>
+				<span class="truncate" title={field_name}>{field_name}</span>
+				<span class="truncate" title={address}>Dir: {address}</span>
+				<span class="truncate" title={phone}>Tel: {phone}</span>
+				<span class="truncate" title={convertirFormatoFecha(date)}>Día: {convertirFormatoFecha(date)}</span>
+				<span class="truncate" title={`${start_time.slice(0,-3)} - ${end_time.slice(0,-3)}`}>Hs: {start_time.slice(0,-3)} - {end_time.slice(0,-3)}</span>
+			</div>
+			<div id="clip_list_modal" class="hidden overflow-hidden flex flex-col max-h-[400px]">
+				<h1 class="text-[#9F4AA0] font-medium truncate py-2" title="Lista clips">Lista de clips</h1>
+				<ul class="overflow-auto h-full">
+					{clips.length !==0 ? clips.map(({ clip_id, title })=>{
+						return <li class="flex items-center justify-between hover:bg-[#A6A5A5]/[.3] p-1 rounded"><span class="truncate">{title}</span><a class="rounded px-2 underline" href={`/clip/${clip_id}`} target="_blank">Ver</a></li>
+					}) : <span>No hay clips para este video</span>}
+				</ul>
+			</div>
+			<ul class="hidden flex flex-col" id="rate_opts">
+				<li class="hover:bg-[#A6A5A5]/[.3] p-1" data-rate="0.5">0.5</li>
+				<li class="hover:bg-[#A6A5A5]/[.3] p-1" data-rate="0.75">0.75</li>
+				<li class="hover:bg-[#A6A5A5]/[.3] p-1" data-rate="1">Normal</li>
+				<li class="hover:bg-[#A6A5A5]/[.3] p-1" data-rate="1.5">1.5</li>
+				<li class="hover:bg-[#A6A5A5]/[.3] p-1" data-rate="2">2</li>
+			</ul>
 		</div>
-		<div id="clip_modal" class="hidden bg-white absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 flex flex-col rounded text-lg px-10 py-5 ">
-			<div class="flex justify-between items-center gap-5"><h1 class="text-[#9F4AA0] text-lg md:text-3xl font-medium text-nowrap">Crear Clip</h1><button class="close_modal font-bold text-red-400 text-2xl">X</button></div>
-			<span>Ponele un título a tu clip</span>
-			<form class="w-full flex flex-col gap-3" id="save_clip_form">
-				<Input id="clip_title" required placeholder="Título" notSvg />
-				<Button type="submit">
-					<span id="content_btn">Guardar Clip</span>
-					<div class='w-6 h-6 border-4 border-ice border-l-transparent rounded-full animate-spin hidden' id="spinner"></div>
-				</Button>
-			</form>
-		</div>
-		<div id="clip_success_modal" class="hidden bg-white absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 flex flex-col rounded text-lg px-10 py-5 gap-5">
-			<div class="flex justify-between items-center gap-5"><h1 class="text-[#9F4AA0] text-lg md:text-3xl font-medium text-nowrap">Clip creado con exito</h1><button class="close_modal font-bold text-red-400 text-2xl">X</button></div>
-			<Button id="copy_link_button">Copiar link</Button>
-			<Button id="view_clip_button">Ver clip</Button>
-		</div>
-		<div id="clip_list_modal" class="overflow-hidden hidden bg-white absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 flex flex-col rounded text-lg py-5 gap-5 px-4">
-			<div class="flex justify-between items-center w-full"><h1 class="text-[#9F4AA0] text-lg md:text-3xl font-medium text-nowrap">Lista de clips</h1><button class="close_modal font-bold text-red-400 text-2xl">X</button></div>
-			<div class="overflow-auto h-full">
-				{clips.length !==0 ? clips.map(({ clip_id, title })=>{
-					return <div class="flex items-center justify-between w-[350px]"><span>{title}</span><a class="rounded-2xl bg-primary border text-white text-sm py-2 px-5" href={`/clip/${clip_id}`} target="_blank">VER</a></div>
-				}) : <span>No hay clips para este video</span>}
+		<div class="fixed left-0 top-0 w-full h-full bg-black/[.5] hidden" id="filter_bg"></div>
+		<form id="save_clip_form" class=" hidden bg-black/[.7] text-white w-full md:w-[400px] absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 flex flex-col rounded p-2 gap-3">
+			<span class="absolute right-3 top-2 text-2xl font-bold close_modal cursor-pointer">X</span>
+			<h1 class="text-2xl text-nowrap">Crear Clip</h1>
+			<label>Ponele un título a tu clip
+			<Input id="clip_title" required placeholder="Título" notSvg /></label>
+			<button type="submit" class="flex items-center justify-center cursor-pointer rounded w-[150px] bg-primary p-2 disabled:bg-primary_disabled">
+				<span id="content_btn">Guardar Clip</span>
+				<div class='w-6 h-6 border-4 border-ice border-l-transparent rounded-full animate-spin hidden' id="spinner"></div>
+			</button>
+		</form>
+		<div id="clip_success_modal" class="hidden bg-black/[.7] text-white w-full md:w-[400px] absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 flex flex-col rounded p-2 gap-3">
+			<span class="absolute right-3 top-2 text-2xl font-bold close_modal cursor-pointer">X</span>
+			<h1 class="text-2xl text-nowrap">Clip creado con éxito</h1>
+			<div class="flex items-center flex-col gap-2">
+				<button id="copy_link_button" class="flex items-center justify-center cursor-pointer rounded w-[250px] bg-primary p-2 disabled:bg-primary_disabled">Copiar link</button>
+				<button id="view_clip_button" class="flex items-center justify-center cursor-pointer rounded w-[250px] bg-primary p-2 disabled:bg-primary_disabled">Ver clip</button>
+				<button id="download_button" class="flex items-center justify-center cursor-pointer rounded w-[250px] bg-primary p-2 disabled:bg-primary_disabled">Descargar</button>
 			</div>
 		</div>
 		<style is:global>
@@ -246,7 +321,6 @@ if(Astro.request.method === 'POST'){
 			const rateOptions = document.getElementById('rate_opts')
 			const clipBtn = document.getElementById('clip_btn')
 			const clipState = document.getElementById('clip_state')
-			const clipModal = document.getElementById('clip_modal')
 			const clipChronometer = document.getElementById('clip_chronometer')
 			const saveClipForm = document.getElementById('save_clip_form')
 			const clipTitle = document.getElementById('clip_title')
@@ -257,6 +331,7 @@ if(Astro.request.method === 'POST'){
 			const clipListModal = document.getElementById('clip_list_modal')
 			const spinnerVideo = document.getElementById('spinnerVideo')
 			const tooltip = document.getElementById("tooltip")
+			const modalCotainer = document.getElementById("modal_container")
 
 			let modalOpen = false
 			let currentDurationStartClipSeconds = 0
@@ -304,9 +379,24 @@ if(Astro.request.method === 'POST'){
 				})
 
 				clipList.addEventListener('click', ()=>{
-					clipListModal.classList.remove('hidden')
-					filterBg.classList.remove('hidden')
-					modalOpen = true
+					if(!modalCotainer.classList.contains('hidden')){
+						if(!infoModal.classList.contains('hidden')){
+							infoModal.classList.add('hidden')
+						}
+						if(!rateOptions.classList.contains('hidden')){
+							rateOptions.classList.add('hidden')
+						}
+						if(!clipListModal.classList.contains('hidden')){
+							modalCotainer.classList.toggle('hidden')
+							clipListModal.classList.toggle('hidden')
+						}else{
+							clipListModal.classList.toggle('hidden')
+						}
+					}
+					else{
+						modalCotainer.classList.toggle('hidden')
+						clipListModal.classList.toggle('hidden')
+					}
 				})
 
 				saveClipForm.addEventListener('submit', async function(event){
@@ -315,7 +405,7 @@ if(Astro.request.method === 'POST'){
 					const clipData = {
 						title,
 						start: currentDurationStartClipSeconds,
-						end: currentDurationStopClipSeconds
+						end: currentDurationStopClipSeconds,
 					};
 					this.disabled = true
 					contentBtn.classList.add('hidden')
@@ -329,8 +419,8 @@ if(Astro.request.method === 'POST'){
 						body: JSON.stringify(clipData)
 					})
 					if(res.ok){
-						const { clip_id } =  await res.json()
-						clipModal.classList.add('hidden')
+						const { clipId } =  await res.json()
+						saveClipForm.classList.add('hidden')
 						successModal.classList.remove('hidden')
 						modalOpen = true
 
@@ -338,11 +428,11 @@ if(Astro.request.method === 'POST'){
 						const viewClipButton = document.getElementById('view_clip_button');
 
 						copyLinkButton.addEventListener('click', async () => {
-							await navigator.clipboard.writeText(`http://localhost:4321/clip/${clip_id}`)
+							await navigator.clipboard.writeText(`${window.location.origin}/clip/${clipId}`)
 						});
 
 						viewClipButton.addEventListener('click', () => {
-							window.open(`/clip/${clip_id}`, '_blank');
+							window.open(`/clip/${clipId}`, '_blank');
 						});
 					}
 					this.disabled = false
@@ -355,7 +445,7 @@ if(Astro.request.method === 'POST'){
 					else stopClip()
 				})
 
-				const startClip = ()=>{
+				function startClip(){
 					trackPrev.disabled = true
 					trackNext.disabled = true
 					playpause.disabled = true
@@ -374,7 +464,7 @@ if(Astro.request.method === 'POST'){
 					changeButtonState('playpause');
 				}
 
-				const stopClip = ()=>{
+				function stopClip(){
 					trackPrev.disabled = false
 					trackNext.disabled = false
 					playpause.disabled = false
@@ -390,12 +480,29 @@ if(Astro.request.method === 'POST'){
 					stopChronometer();
 					video.pause()
 					filterBg.classList.remove('hidden')
-					clipModal.classList.remove('hidden')
+					saveClipForm.classList.remove('hidden')
 					modalOpen = true
 				}
 
 				rate.addEventListener('click', ()=>{
-					rateOptions.classList.toggle('hidden')
+					if(!modalCotainer.classList.contains('hidden')){
+						if(!clipListModal.classList.contains('hidden')){
+							clipListModal.classList.add('hidden')
+						}
+						if(!infoModal.classList.contains('hidden')){
+							infoModal.classList.add('hidden')
+						}
+						if(!rateOptions.classList.contains('hidden')){
+							modalCotainer.classList.toggle('hidden')
+							rateOptions.classList.toggle('hidden')
+						}else{
+							rateOptions.classList.toggle('hidden')
+						}
+					}
+					else{
+						modalCotainer.classList.toggle('hidden')
+						rateOptions.classList.toggle('hidden')
+					}
 				})
 
 				const options = rateOptions.querySelectorAll('li');
@@ -405,34 +512,49 @@ if(Astro.request.method === 'POST'){
 						video.playbackRate = rateSelected;
 						rate.innerText = `x${rateSelected}`;
 						rateOptions.classList.add('hidden');
+						modalCotainer.classList.toggle('hidden')
 					});
 				});
 
 				filterBg.addEventListener('click',()=>{
 					filterBg.classList.add('hidden')
-					if(!infoModal.classList.contains('hidden'))
-						infoModal.classList.add('hidden')
-					if(!clipModal.classList.contains('hidden'))
-						clipModal.classList.add('hidden')
+					if(!saveClipForm.classList.contains('hidden'))
+						saveClipForm.classList.add('hidden')
 					if(!successModal.classList.contains('hidden'))
 						successModal.classList.add('hidden')
-					if(!clipListModal.classList.contains('hidden'))
-						clipListModal.classList.add('hidden')
 					modalOpen = false
 				})
 
 				for (let i = 0; i < closeModal.length; i++) {
 					closeModal[i].addEventListener('click', function(){
-						this.parentNode.parentNode.classList.add('hidden')
+						this.parentNode.classList.add('hidden')
 						filterBg.classList.add('hidden')
 						modalOpen = false
 					})
 				}
 
 				info.addEventListener('click', ()=>{
-					filterBg.classList.remove('hidden')
-					infoModal.classList.remove('hidden')
-					modalOpen = true
+					if(!modalCotainer.classList.contains('hidden')){
+						if(!clipListModal.classList.contains('hidden')){
+							clipListModal.classList.add('hidden')
+						}
+						if(!rateOptions.classList.contains('hidden')){
+							rateOptions.classList.add('hidden')
+						}
+						if(!infoModal.classList.contains('hidden')){
+							modalCotainer.classList.toggle('hidden')
+							infoModal.classList.toggle('hidden')
+							modalOpen = false
+						}else{
+							infoModal.classList.toggle('hidden')
+							modalOpen = true
+						}
+					}
+					else{
+						modalCotainer.classList.toggle('hidden')
+						infoModal.classList.toggle('hidden')
+						modalOpen = true
+					}
 				})
 
 				trackNext.addEventListener('click', ()=>{
@@ -469,7 +591,7 @@ if(Astro.request.method === 'POST'){
 					const seconds = Math.floor(duration % 60);
 					const timeString = `${hours > 0 ? hours + ':' : ''}${hours > 0 && minutes < 10 ? '0' : ''}${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
 					tooltip.textContent = timeString;
-					tooltip.style.left = `${e.pageX}px`;
+					tooltip.style.left = `${e.pageX-10}px`;
 				});
 
 				fullscreen.addEventListener('click', ()=>{
@@ -487,112 +609,105 @@ if(Astro.request.method === 'POST'){
 				})
 
 				document.addEventListener('keydown', function(event) {
-					if(!modalOpen){
-						if (event.code === 'ArrowRight') video.currentTime += 10;
-						if (event.code === 'ArrowLeft') video.currentTime -= 10;
-						if (event.code === 'Space') {
-							if (video.paused || video.ended) {
-								video.play()
-							}else{
-								video.pause()
-							}
-						}
-						if (event.code === 'Enter') {
-							if(clipBtn.getAttribute('clip-state') === 'start') startClip()
-							else stopClip()
-						}
-						if (event.code === 'KeyF') changeButtonState('maximizeminimize')
-					}else{
-						if (event.code === 'Escape'){
-							if(!filterBg.classList.contains('hidden'))
-								filterBg.classList.add('hidden')
-							if(!infoModal.classList.contains('hidden'))
-								infoModal.classList.add('hidden')
-							if(!clipModal.classList.contains('hidden'))
-								clipModal.classList.add('hidden')
-							if(!successModal.classList.contains('hidden'))
-								successModal.classList.add('hidden')
-							if(!clipListModal.classList.contains('hidden'))
-								clipListModal.classList.add('hidden')
-							modalOpen = false
-						}
+					if (event.code === 'ArrowRight' && !modalOpen) video.currentTime += 10;
+					if (event.code === 'ArrowLeft' && !modalOpen) video.currentTime -= 10;
+					if (event.code === 'Space' && !modalOpen) {
+						event.stopPropagation();
+            			event.preventDefault();
+						if (video.paused || video.ended) video.play()
+						else video.pause()
+					}
+					if (event.code === 'Enter' && !modalOpen) {
+						if(clipBtn.getAttribute('clip-state') === 'start') startClip()
+						else stopClip()
+					}
+					if (event.code === 'KeyF' && !modalOpen) changeButtonState('maximizeminimize')
+					if (event.code === 'Escape' && modalOpen){
+						filterBg.classList.add('hidden')
+						if(!saveClipForm.classList.contains('hidden'))
+							saveClipForm.classList.add('hidden')
+						if(!successModal.classList.contains('hidden'))
+							successModal.classList.add('hidden')
+						modalOpen = false
 					}
 				});
+
+				function changeButtonState(type) {
+					if (type == 'playpause') {
+						if (video.paused || video.ended) {
+							playpause.setAttribute('data-state', 'play');
+							stopIcon.classList.add('hidden')
+							playIcon.classList.remove('hidden')
+						}
+						else {
+							playpause.setAttribute('data-state', 'pause');
+							stopIcon.classList.remove('hidden')
+							playIcon.classList.add('hidden')
+						}
+					}
+					else if (type == 'maximizeminimize') {
+						if(fullscreen.getAttribute("data-state") === 'maximize'){
+							fullscreen.setAttribute("data-state", 'minimize')
+							minimizeIcon.classList.remove('hidden')
+							maximizeIcon.classList.add('hidden')
+							videoContainer.requestFullscreen();
+						}else{
+							fullscreen.setAttribute("data-state", 'maximize')
+							minimizeIcon.classList.add('hidden')
+							maximizeIcon.classList.remove('hidden')
+							document.exitFullscreen();
+						}
+					}
+				}
+
+				function currentTimeDuration(){
+					const currTime = Math.round(video.currentTime);
+					const duration = Math.round(video.duration);
+					
+					const currentTimeStr = formatTime(currTime);
+					const durationStr = formatTime(duration);
+
+					currentTime.innerText = currentTimeStr;
+					if(durationSpan)
+						durationSpan.innerText = durationStr;
+				}
+
+				function formatTime(time) {
+					let hours = Math.floor(time / 3600);
+					let minutes = Math.floor((time % 3600) / 60);
+					let seconds = time % 60;
+
+					if (hours > 0) {
+						return `${hours}:${(minutes < 10 ? '0' : '') + minutes}:${(seconds < 10 ? '0' : '') + seconds}`;
+					} else {
+						return `${minutes}:${(seconds < 10 ? '0' : '') + seconds}`;
+					}
+				}
+
+				let intervalId;
+				let startTime;
+
+				function startChronometer() {
+					startTime = Date.now();
+					intervalId = setInterval(() => {
+						const elapsed = Date.now() - startTime;
+						const minutes = Math.floor(elapsed / 60000);
+						const seconds = Math.floor((elapsed % 60000) / 1000);
+						clipChronometer.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+						if (elapsed >= 60000) {
+							clearInterval(intervalId);
+							stopClip()
+						}
+					}, 1000);
+				}
+
+				function stopChronometer() {
+					clearInterval(intervalId);
+				}
 			});
 
-			function changeButtonState(type) {
-				if (type == 'playpause') {
-					if (video.paused || video.ended) {
-						playpause.setAttribute('data-state', 'play');
-						stopIcon.classList.add('hidden')
-						playIcon.classList.remove('hidden')
-					}
-					else {
-						playpause.setAttribute('data-state', 'pause');
-						stopIcon.classList.remove('hidden')
-						playIcon.classList.add('hidden')
-					}
-				}
-				else if (type == 'maximizeminimize') {
-					if(fullscreen.getAttribute("data-state") === 'maximize'){
-						fullscreen.setAttribute("data-state", 'minimize')
-						minimizeIcon.classList.remove('hidden')
-						maximizeIcon.classList.add('hidden')
-						videoContainer.requestFullscreen();
-					}else{
-						fullscreen.setAttribute("data-state", 'maximize')
-						minimizeIcon.classList.add('hidden')
-						maximizeIcon.classList.remove('hidden')
-						document.exitFullscreen();
-					}
-				}
-			}
-
-			function currentTimeDuration(){
-				const currTime = Math.round(video.currentTime);
-				const duration = Math.round(video.duration);
-				
-				const currentTimeStr = formatTime(currTime);
-				const durationStr = formatTime(duration);
-
-				currentTime.innerText = currentTimeStr;
-				if(durationSpan)
-					durationSpan.innerText = durationStr;
-			}
-
-			function formatTime(time) {
-				let hours = Math.floor(time / 3600);
-				let minutes = Math.floor((time % 3600) / 60);
-				let seconds = time % 60;
-
-				if (hours > 0) {
-					return `${hours}:${(minutes < 10 ? '0' : '') + minutes}:${(seconds < 10 ? '0' : '') + seconds}`;
-				} else {
-					return `${minutes}:${(seconds < 10 ? '0' : '') + seconds}`;
-				}
-			}
-
-			let intervalId;
-			let startTime;
-
-			function startChronometer() {
-				startTime = Date.now();
-				intervalId = setInterval(() => {
-					const elapsed = Date.now() - startTime;
-					const minutes = Math.floor(elapsed / 60000);
-					const seconds = Math.floor((elapsed % 60000) / 1000);
-					clipChronometer.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-
-					if (elapsed >= 60000) {
-						clearInterval(intervalId);
-						startClip()
-					}
-				}, 1000);
-			}
-
-			function stopChronometer() {
-				clearInterval(intervalId);
-			}
+			
 		</script>
 	</body>
 </html>

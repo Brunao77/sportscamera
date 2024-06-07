@@ -6,6 +6,7 @@ import Play from "../../icons/Play.astro";
 import Stop from "../../icons/Stop.astro";
 import TrackNext from "../../icons/TrackNext.astro";
 import TrackPrev from "../../icons/TrackPrev.astro";
+import Download from "../../icons/Download.astro";
 
 const { clip_id } = Astro.params
 
@@ -36,34 +37,37 @@ const formatedDate = newDate.toISOString().split('T')[0];
 	<body class="overflow-hidden h-full">
         <div id="videoContainer" class="relative h-full bg-black" data-fullscreen="false">
             <div class='absolute top-1/2 left-1/2 w-20 h-20 border-4 border-white border-l-transparent rounded-full animate-spin hidden' id="spinnerVideo"></div>
-            <video id="video" class="object-cover w-full" preload="metadata"></video>
-            <div id="video-controls" class="absolute inset-x-0 bottom-0 w-full flex flex-col-reverse md:flex-col px-10 py-5 gap-1" data-state="hidden">
-                <progress id="progress" class="w-full overflow-hidden h-[7px] rounded-lg color-primary cursor-pointer hover:h-[10px]" min="0" value="0"><span id="progress-bar"></span></progress>
-                <span id="tooltip" class="absolute  text-white top-[-10px]"></span>
-                <div class="flex justify-between items-center">
-                    <div class="flex text-white items-end gap-2">
-                        <div><span id="current_time">0:00</span> / <span id="duration">0:00</span></div>
-                        <span class="text-primary text-2xl">{title}</span>
-                        <span>{formatedDate}</span>
-                    </div>
-                    <div class="flex items-center">
-                        <button id="track_prev"><TrackPrev /></button>
-                        <button id="playpause" data-state="play"><Play id="play_icon" /><Stop hidden id="stop_icon" /></button>
-                        <button id="track_next"><TrackNext /></button>
-                    </div>
-                    <div class="relative flex items-center gap-2">
-                        <ul class="absolute bg-[#6A6A6A] top-[-510%] flex flex-col hidden text-white rounded" id="rate_opts">
-                            <li class="cursor-pointer hover:bg-[#7E7E7E] px-4 rounded-t" data-rate="0.5">0.5</li>
-                            <li class="cursor-pointer hover:bg-[#7E7E7E] px-4" data-rate="0.75">0.75</li>
-                            <li class="cursor-pointer hover:bg-[#7E7E7E] px-4" data-rate="1">1</li>
-                            <li class="cursor-pointer hover:bg-[#7E7E7E] px-4" data-rate="1.5">1.5</li>
-                            <li class="cursor-pointer hover:bg-[#7E7E7E] px-4 rounded-b" data-rate="2">2</li>
-                        </ul>
-                        <button class="text-white font-medium px-5 rounded hover:bg-[#6A6A6A]" id="rate">x1</button>
-                        <button id="fs" data-state="maximize"><Maximize id="maximize_icon" /><Minimize hidden id="minimize_icon"/></button>
-                    </div>
-                </div>
-            </div>
+            <video id="video" class="object-cover w-full" preload="metadata" src={clip_url}></video>
+            <div id="video-controls" class="absolute bottom-0 w-full flex flex-col px-3 py-1 gap-1 text-white" data-state="hidden">
+				<progress id="progress" class="w-full overflow-hidden h-[7px] rounded-lg color-primary cursor-pointer hover:h-[10px]" min="0" value="0"><span id="progress-bar"></span></progress>
+				<span id="tooltip" class="absolute text-white top-[-50%]"></span>
+				<div class="flex justify-between items-end md:items-center px-2">
+					<div class="flex gap-2 md:gap-5 items-center flex-row">
+                        <button id="track_prev" tabindex="-1"><TrackPrev /></button>
+						<button id="playpause" tabindex="-1" data-state="play"><Play id="play_icon" /><Stop hidden id="stop_icon" /></button>
+						<button id="track_next" tabindex="-1"><TrackNext /></button>
+						<div><span id="current_time">0:00</span> / <span id="duration">0:00</span></div>
+					</div>
+					<div class="flex flex-row items-center gap-2 md:gap-5">
+                        <a tabindex="-1" href={clip_url} download><Download /></a>
+						<button class="text-white text-lg font-medium rounded" id="rate" tabindex="-1">x1</button>
+						<button id="fs" data-state="maximize" tabindex="-1"><Maximize id="maximize_icon" /><Minimize hidden id="minimize_icon"/></button>
+					</div>
+				</div>
+			</div>
+        </div>
+        <div id="modal_container" class="hidden absolute bg-black/[.5] w-[300px] right-[1%] bottom-[8%] rounded py-1 px-2 text-white">
+			<ul class="hidden flex flex-col" id="rate_opts">
+				<li class="hover:bg-[#A6A5A5]/[.3] p-1" data-rate="0.5">0.5</li>
+				<li class="hover:bg-[#A6A5A5]/[.3] p-1" data-rate="0.75">0.75</li>
+				<li class="hover:bg-[#A6A5A5]/[.3] p-1" data-rate="1">Normal</li>
+				<li class="hover:bg-[#A6A5A5]/[.3] p-1" data-rate="1.5">1.5</li>
+				<li class="hover:bg-[#A6A5A5]/[.3] p-1" data-rate="2">2</li>
+			</ul>
+		</div>
+        <div class="absolute top-2 left-2 text-white flex gap-2 items-end">
+            <span class="text-primary text-lg md:text-2xl font-medium truncate max-w-[100px] md:max-w-[600px]" title={title}>{title}</span>
+            <span>{formatedDate}</span>
         </div>
         <style>
             progress::-webkit-progress-value {
@@ -87,9 +91,7 @@ const formatedDate = newDate.toISOString().split('T')[0];
 				background: var(--background-color);
 			}
         </style>
-        <script is:inline src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-        <script is:inline define:vars={{ clip_url }}>
-        document.addEventListener('DOMContentLoaded',()=>{
+        <script is:inline define:vars={{clip_url}}>
             const video = document.getElementById('video')
             const videoContainer = document.getElementById('videoContainer');
             const playpause = document.getElementById('playpause');
@@ -106,143 +108,98 @@ const formatedDate = newDate.toISOString().split('T')[0];
             const durationSpan = document.getElementById('duration')
             const rate = document.getElementById('rate')
             const rateOptions = document.getElementById('rate_opts')
-            const videoSpinner = document.getElementById('spinnerVideo')
+            const spinnerVideo = document.getElementById('spinnerVideo')
             const tooltip = document.getElementById("tooltip")
+            const modalCotainer = document.getElementById("modal_container")
 
-            if (Hls.isSupported()) {
-                video.play()
-                const  hls = new Hls();
-                hls.attachMedia(video);
-                hls.on(Hls.Events.MEDIA_ATTACHED, function () {
-                    hls.loadSource(`/api/videos/getVideo/${clip_url}`);
-                });
-            }
-
-            video.addEventListener('seeked', function() {
-                if (video.currentTime < allowedStart || video.currentTime > allowedEnd) {
-                video.currentTime = allowedStart;
-                }
-            });
-
-            rate.addEventListener('click', ()=>{
-                rateOptions.classList.toggle('hidden')
-            })
-
-            const options = rateOptions.querySelectorAll('li');
-            options.forEach(option => {
-                option.addEventListener('click', (event) => {
-                    const rateSelected = event.target.getAttribute('data-rate');
-                    video.playbackRate = rateSelected;
-                    rate.innerText = `x${rateSelected}`;
-                    rateOptions.classList.add('hidden');
-                });
-            });
-
-            trackNext.addEventListener('click', ()=>{
-                video.currentTime += 5;
-            })
-
-            trackPrev.addEventListener('click', ()=>{
-                video.currentTime -= 5;
-            })
-
-            playpause.addEventListener('click', ()=>{
-                if (video.paused || video.ended) video.play();
-				else video.pause();
-            })
-
-            video.addEventListener('play', function() {
-				changeButtonState('playpause');
-			}, false);
-            
-			video.addEventListener('pause', function() {
-				changeButtonState('playpause');
-			}, false);
-
-            videoSpinner.classList.remove('hidden')
             video.addEventListener('loadedmetadata', function() {
-                videoSpinner.classList.add('hidden')
+                spinnerVideo.classList.add('hidden')
+				video.currentTime = 0
 				progress.setAttribute('max', video.duration);
-                currentTimeDuration()
-			});
-
-            video.addEventListener('timeupdate', function() {
-                currentTimeDuration()
-				if (!progress.getAttribute('max')) progress.setAttribute('max', video.duration);
-				progress.value = video.currentTime;
-				progressBar.style.width = Math.floor((video.currentTime / video.duration) * 100) + '%';
-			});
-
-            video.addEventListener('click', ()=>{
-                if (video.paused) video.play();
-                else video.pause();
-            })
-
-            progress.addEventListener('click', function(e) {
-				const pos = (e.pageX  - (this.offsetLeft + this.offsetParent.offsetLeft + this.offsetParent.offsetParent.offsetLeft)) / this.offsetWidth;
-				video.currentTime = pos * video.duration;
-			});
-
-            progress.addEventListener('mouseover', function (e) {
-				tooltip.classList.remove('hidden')
-			});
-
-			progress.addEventListener('mouseout', function (e) {
-				tooltip.classList.add('hidden');
-			});
-
-			progress.addEventListener('mousemove', function (e) {
-				const pos = (e.pageX - (this.offsetLeft + this.offsetParent.offsetLeft + this.offsetParent.offsetParent.offsetLeft)) / this.offsetWidth;
-				const duration = pos * video.duration;
-				const hours = Math.floor(duration / 3600);
-				const minutes = Math.floor((duration % 3600) / 60);
-				const seconds = Math.floor(duration % 60);
-				const timeString = `${hours > 0 ? hours + ':' : ''}${hours > 0 && minutes < 10 ? '0' : ''}${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-				tooltip.textContent = timeString;
-				tooltip.style.left = `${e.pageX}px`;
-			});
-
-            fullscreen.addEventListener('click', ()=>{
-                if(fullscreen.getAttribute("data-state") === 'maximize'){
-                    fullscreen.setAttribute("data-state", 'minimize')
-                    minimizeIcon.classList.remove('hidden')
-                    maximizeIcon.classList.add('hidden')
-                    videoContainer.requestFullscreen();
-                }else{
-                    fullscreen.setAttribute("data-state", 'maximize')
-                    document.exitFullscreen();
-                    minimizeIcon.classList.add('hidden')
-                    maximizeIcon.classList.remove('hidden')
-                }
-            })
-
-            document.addEventListener('keydown', function(event) {
-                if (event.code === 'ArrowRight') video.currentTime += 5;
-                if (event.code === 'ArrowLeft') video.currentTime -= 5;
-                if (event.code === 'Space') {
-                    if (video.paused || video.ended) {
-                        video.play()
-					}else{
-                        video.pause()
+				currentTimeDuration()
+                
+                rate.addEventListener('click', ()=>{
+                    if(!modalCotainer.classList.contains('hidden')){
+                        if(!rateOptions.classList.contains('hidden')){
+                            modalCotainer.classList.toggle('hidden')
+                            rateOptions.classList.toggle('hidden')
+                        }else rateOptions.classList.toggle('hidden')
                     }
-                }
-                if (event.code === 'KeyF') changeButtonState('maximizeminimize')
-            });
+                    else{
+                        modalCotainer.classList.toggle('hidden')
+                        rateOptions.classList.toggle('hidden')
+                    }
+                })
 
-            function changeButtonState(type) {
-				if (type == 'playpause') {
-					if (video.paused || video.ended) {
-                        playpause.setAttribute('data-state', 'play');
-                        stopIcon.classList.add('hidden')
-                        playIcon.classList.remove('hidden')
-					}
-					else {
-                        playpause.setAttribute('data-state', 'pause');
-                        stopIcon.classList.remove('hidden')
-                        playIcon.classList.add('hidden')
-					}
-				}
-				else if (type == 'maximizeminimize') {
+                const options = rateOptions.querySelectorAll('li');
+                options.forEach(option => {
+                    option.addEventListener('click', (event) => {
+                        const rateSelected = event.target.getAttribute('data-rate');
+                        video.playbackRate = rateSelected;
+                        rate.innerText = `x${rateSelected}`;
+                        rateOptions.classList.add('hidden');
+                        modalCotainer.classList.add('hidden')
+                    });
+                });
+
+                trackNext.addEventListener('click', ()=>{
+                    video.currentTime += 5;
+                })
+
+                trackPrev.addEventListener('click', ()=>{
+                    video.currentTime -= 5;
+                })
+
+                playpause.addEventListener('click', ()=>{
+                    if (video.paused || video.ended) video.play();
+                    else video.pause();
+                })
+
+                video.addEventListener('play', function() {
+                    changeButtonState('playpause');
+                }, false);
+                
+                video.addEventListener('pause', function() {
+                    changeButtonState('playpause');
+                }, false);
+
+                video.addEventListener('timeupdate', function() {
+                    currentTimeDuration()
+                    if (!progress.getAttribute('max')) progress.setAttribute('max', video.duration);
+                    progress.value = video.currentTime;
+                    progressBar.style.width = Math.floor((video.currentTime / video.duration) * 100) + '%';
+                });
+
+                video.addEventListener('click', ()=>{
+                    if (video.paused) video.play();
+                    else video.pause();
+                })
+
+                progress.addEventListener('click', function(e) {
+                    const pos = (e.pageX  - (this.offsetLeft + this.offsetParent.offsetLeft + this.offsetParent.offsetParent.offsetLeft)) / this.offsetWidth;
+                    video.currentTime = pos * video.duration;
+                });
+
+                progress.addEventListener('mouseover', function (e) {
+                    tooltip.classList.remove('hidden')
+                });
+
+                progress.addEventListener('mouseout', function (e) {
+                    tooltip.classList.add('hidden');
+                });
+
+                progress.addEventListener('mousemove', function (e) {
+                    const pos = (e.pageX - (this.offsetLeft + this.offsetParent.offsetLeft + this.offsetParent.offsetParent.offsetLeft)) / this.offsetWidth;
+                    const duration = pos * video.duration;
+                    const hours = Math.floor(duration / 3600);
+                    const minutes = Math.floor((duration % 3600) / 60);
+                    const seconds = Math.floor(duration % 60);
+                    const timeString = `${hours > 0 ? hours + ':' : ''}${hours > 0 && minutes < 10 ? '0' : ''}${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+                    tooltip.textContent = timeString;
+                    tooltip.style.left = `${e.pageX}px`;
+                });
+
+                fullscreen.addEventListener('click', ()=>{
                     if(fullscreen.getAttribute("data-state") === 'maximize'){
                         fullscreen.setAttribute("data-state", 'minimize')
                         minimizeIcon.classList.remove('hidden')
@@ -250,37 +207,76 @@ const formatedDate = newDate.toISOString().split('T')[0];
                         videoContainer.requestFullscreen();
                     }else{
                         fullscreen.setAttribute("data-state", 'maximize')
+                        document.exitFullscreen();
                         minimizeIcon.classList.add('hidden')
                         maximizeIcon.classList.remove('hidden')
-                        document.exitFullscreen();
                     }
-				}
-			}
+                })
 
-            function currentTimeDuration(){
-                const currTime = Math.round(video.currentTime);
-                const duration = Math.round(video.duration);
-                
-                const currentTimeStr = formatTime(currTime);
-                const durationStr = formatTime(duration);
+                document.addEventListener('keydown', function(event) {
+                    if (event.code === 'ArrowRight') video.currentTime += 5;
+                    if (event.code === 'ArrowLeft') video.currentTime -= 5;
+                    if (event.code === 'Space') {
+                        event.stopPropagation();
+                        event.preventDefault();
+                        if (video.paused || video.ended)  video.play()
+                        else video.pause()
+                    }
+                    if (event.code === 'KeyF') changeButtonState('maximizeminimize')
+                });
 
-                currentTime.innerText = currentTimeStr;
-                if(durationStr)
-                    durationSpan.innerText = durationStr;
-            }
-
-            function formatTime(time) {
-                let hours = Math.floor(time / 3600);
-                let minutes = Math.floor((time % 3600) / 60);
-                let seconds = time % 60;
-
-                if (hours > 0) {
-                    return `${hours}:${(minutes < 10 ? '0' : '') + minutes}:${(seconds < 10 ? '0' : '') + seconds}`;
-                } else {
-                    return `${minutes}:${(seconds < 10 ? '0' : '') + seconds}`;
+                function changeButtonState(type) {
+                    if (type == 'playpause') {
+                        if (video.paused || video.ended) {
+                            playpause.setAttribute('data-state', 'play');
+                            stopIcon.classList.add('hidden')
+                            playIcon.classList.remove('hidden')
+                        }
+                        else {
+                            playpause.setAttribute('data-state', 'pause');
+                            stopIcon.classList.remove('hidden')
+                            playIcon.classList.add('hidden')
+                        }
+                    }
+                    else if (type == 'maximizeminimize') {
+                        if(fullscreen.getAttribute("data-state") === 'maximize'){
+                            fullscreen.setAttribute("data-state", 'minimize')
+                            minimizeIcon.classList.remove('hidden')
+                            maximizeIcon.classList.add('hidden')
+                            videoContainer.requestFullscreen();
+                        }else{
+                            fullscreen.setAttribute("data-state", 'maximize')
+                            minimizeIcon.classList.add('hidden')
+                            maximizeIcon.classList.remove('hidden')
+                            document.exitFullscreen();
+                        }
+                    }
                 }
-            }
-        })
-S        </script>
+
+                function currentTimeDuration(){
+                    const currTime = Math.round(video.currentTime);
+                    const duration = Math.round(video.duration);
+                    
+                    const currentTimeStr = formatTime(currTime);
+                    const durationStr = formatTime(duration);
+
+                    currentTime.innerText = currentTimeStr;
+                    if(durationStr)
+                        durationSpan.innerText = durationStr;
+                }
+
+                function formatTime(time) {
+                    let hours = Math.floor(time / 3600);
+                    let minutes = Math.floor((time % 3600) / 60);
+                    let seconds = time % 60;
+
+                    if (hours > 0) {
+                        return `${hours}:${(minutes < 10 ? '0' : '') + minutes}:${(seconds < 10 ? '0' : '') + seconds}`;
+                    } else {
+                        return `${minutes}:${(seconds < 10 ? '0' : '') + seconds}`;
+                    }
+                }
+            })
+        </script>
     </body>
 </html>

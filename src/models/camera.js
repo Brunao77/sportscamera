@@ -38,4 +38,16 @@ export class CameraModel {
       console.log(error);
     }
   }
+  static async insert({ field_name, rtsp, rtsp_low }) {
+    try {
+      const { rows } = await pool.query(
+        `INSERT INTO cameras(field_name, rtsp, rtsp_low)
+        VALUES ($1, $2, $3)`,
+        [field_name, rtsp, rtsp_low]
+      );
+      return rows;
+    } catch (error) {
+      console.log(error);
+    }
+  }
 }

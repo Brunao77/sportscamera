@@ -33,4 +33,16 @@ export class EstablishmentModel {
       console.log(error);
     }
   }
+  static async insert({ name }) {
+    try {
+      const { rows } = await pool.query(
+        `INSERT INTO establishments (name)
+        VALUES ($1) RETURNING establishment_id`,
+        [name]
+      );
+      return rows;
+    } catch (error) {
+      console.log(error);
+    }
+  }
 }

@@ -11,4 +11,5 @@
 [ x ] Crear key unica para cada clip
 [   ] Toast Success consistente y apilable /record y /video-list
 [ x ] Arreglar close modal /player
-[  ] Agregar menu opciones para roles de usuario
+[   ] Agregar menu opciones para roles de usuario
+[ x ] Arreglar Icon en input

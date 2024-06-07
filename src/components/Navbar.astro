@@ -8,7 +8,7 @@ import User from "../icons/User.astro";
 import { EstablishmentModel } from "../models/establishment.js";
 
 const user = Astro.locals.user;
-const { establishment_id } = user
+const { establishment_id, role } = user
 
 const establishment = await EstablishmentModel.getById({establishment_id})
 ---
@@ -44,6 +44,14 @@ const establishment = await EstablishmentModel.getById({establishment_id})
                 <span>Pago</span>
             </a>
         </li>
+        {role === 'A' && 
+            <li>
+                <a class="w-full flex gap-2 hover:bg-[#a262a3] rounded-xl py-3 px-1 text-nowrap items-center" href="/add">
+                    <span>+</span>
+                    <span>Agregar</span>
+                </a>
+            </li>
+        }
     </ul>
     <div class="flex justify-between items-center w-full rounded-xl py-3 px-1 relative">
         <div class="flex rounded-xl py-3 px-1 text-nowrap items-center w-full hover:bg-[#a262a3]">

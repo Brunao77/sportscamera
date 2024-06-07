@@ -7,6 +7,10 @@ const user = Astro.locals.user;
 if (!user)
 	return Astro.redirect("/sign-in");
 
+if(user.role !== 'A' || user.role !== 'E'){
+    return Astro.redirect("/sign-in");
+}
+
 if (!user.payment)
 	return Astro.redirect("/payment");
 

@@ -8,6 +8,10 @@ if (!user) {
 	return Astro.redirect("/sign-in");
 }
 
+if(user.role !== 'A' || user.role !== 'E'){
+    return Astro.redirect("/sign-in");
+}
+
 const pago = user.payment
 
 const today = new Date();

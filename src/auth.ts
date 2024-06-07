@@ -13,11 +13,12 @@ export const lucia = new Lucia(adapter, {
 			secure: import.meta.env.PROD
 		}
 	},
-    getUserAttributes: ({ id, establishment_id, payment }) => {
+    getUserAttributes: ({ id, establishment_id, payment, role }) => {
 		return {
             user_id: id,
             establishment_id,
-			payment
+			payment,
+			role
 		};
 	}
 });

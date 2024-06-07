@@ -1,0 +1,152 @@
+---
+import Navbar from "../components/Navbar.astro"
+import Input from "../components/Input.astro"
+import { EstablishmentModel } from "../models/establishment";
+import { CameraModel } from "../models/camera";
+import Button from "../components/Button.astro";
+import Establishment from "../icons/Establishment.astro";
+import Camera from "../icons/Camera.astro";
+import LayoutEstablishment from "../layouts/LayoutEstablishment.astro";
+import Email from "../icons/Email.astro";
+import Password from "../icons/Password.astro";
+import Field from "../icons/Field.astro";
+
+const user = Astro.locals.user;
+if (!user) {
+	return Astro.redirect("/sign-in");
+}
+
+if(user.role !== 'A'){
+    return Astro.redirect("/sign-in");
+}
+---
+
+<LayoutEstablishment title="Agregar / SportsCamera!">
+	<Navbar />
+	<section class="bg-white h-full md:rounded-r-xl text-center z-0 w-full">
+		<strong class="font-medium text-2xl md:text-3xl text-primary text-nowrap">Configuracion</strong>
+        <form method="POST"  class="text-start p-3" id="user_form">
+            <strong class="text-primary text-2xl font-medium">Usuario</strong>
+            <div class="flex flex-wrap my-2 gap-4">
+                <label>
+                    Email
+                    <Input placeholder="Email" name="email" type="email" required>
+                        <Email />
+                    </Input>
+                </label>
+                <label>
+                    Contraseña
+                    <Input placeholder="Contraseña" name="password" type="password" required>
+                        <Password />
+                    </Input>
+                </label>
+                <label>
+                    Confirmar Contraseña
+                    <Input placeholder="Contraseña" name="confirm_password" type="password" required>
+                        <Password />
+                    </Input>
+                </label>
+                <label>
+                    Rol
+                    <select name="role" required>
+                        <option value="E">Establecimiento</option>
+                        <option value="A">Admin</option>
+                    </select>
+                </label>
+                <label>
+                    Nombre Establecimiento
+                    <Input placeholder="Nombre" name="name" type="text" required>
+                        <Establishment />
+                    </Input>
+                </label>
+            </div>
+            <div class="flex md:justify-end w-100 mt-5 gap-5">
+                <Button type="submit" id="save_btn">
+                    <span id="content_btn">GUARDAR USUARIO</span>
+				    <div class='w-6 h-6 border-4 border-ice border-l-transparent rounded-full animate-spin hidden' id="spinner"></div>
+                </Button>
+            </div>
+        </form>
+        <form method="POST"  class="text-start p-3" id="cameras_form">
+            <strong class="text-primary text-2xl font-medium">CÁMARAS</strong>
+            <div class="flex flex-wrap my-2 gap-4">
+                <camera-container></camera-container>
+                <!--<label>
+                    Nombre cancha
+                    <Input placeholder="Cancha" name="field_name" type="text" required>
+                        <Field />
+                    </Input>
+                </label>
+                <label>
+                    Rtsp principal
+                    <Input placeholder="Rtsp principal" name="rtsp" type="text" required>
+                        <Camera />
+                    </Input>
+                </label>
+                <label>
+                    Rtsp secundario
+                    <Input placeholder="Rtsp secundario" name="rtsp_low" type="text" required>
+                        <Camera />
+                    </Input>
+                </label>-->
+                <button id="add_camera_btn">+</button>
+            </div>
+            <div class="flex md:justify-end w-100 mt-5 gap-5">
+                <Button type="submit" id="save_btn">
+                    <span id="content_btn">GUARDAR USUARIO</span>
+				    <div class='w-6 h-6 border-4 border-ice border-l-transparent rounded-full animate-spin hidden' id="spinner"></div>
+                </Button>
+            </div>
+        </form>
+	</section>
+    <script is:inline>
+        document.addEventListener('astro:page-load', ()=>{
+            const form = document.getElementById('form')
+            const saveBtn = document.getElementById('save_btn')
+			const contentBtn = document.getElementById('content_btn')
+			const spinner = document.getElementById('spinner')
+            const addCameraBtn = document.getElementById("add_camera_btn")
+
+            form.addEventListener('submit', ()=>{
+                saveBtn.disabled = true
+                contentBtn.style.display = "none"
+                spinner.classList.remove('hidden')
+            })
+
+            class CameraContainer extends HTMLElement {
+                constructor(index) {
+                    super();
+                    this.innerHTML = `
+                        <label>
+                            Nombre cancha
+                            <Input placeholder="Cancha" name="cameras[${index}][field_name]" type="text" required>
+                                <Field />
+                            </Input>
+                        </label>
+                        <label>
+                            Rtsp principal
+                            <Input placeholder="Rtsp principal" name="cameras[${index}][rtsp]" type="text" required>
+                                <Camera />
+                            </Input>
+                        </label>
+                        <label>
+                            Rtsp secundario
+                            <Input placeholder="Rtsp secundario" name="cameras[${index}][rtsp_low]" type="text" required>
+                                <Camera />
+                            </Input>
+                        </label>
+                    `;
+                }
+            }
+
+            customElements.define('camera-container', CameraContainer);
+
+            let cameraIndex = 0;
+
+            addCameraBtn.addEventListener('click', function() {
+                const cameraContainer = new CameraContainer(cameraIndex++);
+                document.getElementById('cameras_form').insertBefore(cameraContainer, document.getElementById('save_btn').parentElement);
+            })
+        }, { once: false })
+    </script>
+</LayoutEstablishment>

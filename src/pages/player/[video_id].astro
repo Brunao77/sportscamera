@@ -116,59 +116,59 @@ if(Astro.request.method === 'POST'){
 		const outputFilePath = path.join(root, '/tmp', `${clipName}.mp4`);
 
 		const response = await new Promise((resolve, reject) => {
-      ffmpeg()
-        .input(m3u8Path)
-        .setStartTime(TIME_OFFSET)
-        .duration(end - start)
-        .outputOptions('-c copy')
-        .output(outputFilePath)
-        .on('end', async () => {
-          try {
-            const clipKey = `${clipName}.mp4`;
+			ffmpeg()
+				.input(m3u8Path)
+				.setStartTime(TIME_OFFSET)
+				.duration(end - start)
+				.outputOptions('-c copy')
+				.output(outputFilePath)
+				.on('end', async () => {
+				try {
+					const clipKey = `${clipName}.mp4`;
 
-            const fileStream = fs.createReadStream(outputFilePath);
-            const uploadParams = {
-                Bucket: import.meta.env.BUCKET_NAME,
-                Key: clipKey,
-                Body: fileStream,
-                ContentType: "video/mp4"
-            };
+					const fileStream = fs.createReadStream(outputFilePath);
+					const uploadParams = {
+						Bucket: import.meta.env.BUCKET_NAME,
+						Key: clipKey,
+						Body: fileStream,
+						ContentType: "video/mp4"
+					};
 
-            await S3.send(new PutObjectCommand(uploadParams));
+					await S3.send(new PutObjectCommand(uploadParams));
 
-            const getObjectParams = {
-                Bucket: import.meta.env.BUCKET_NAME,
-                Key: clipKey
-            };
+					const getObjectParams = {
+						Bucket: import.meta.env.BUCKET_NAME,
+						Key: clipKey
+					};
 
-            const command = new GetObjectCommand(getObjectParams);
-            const url = await getSignedUrl(S3, command, { expiresIn: 604800 });
+					const command = new GetObjectCommand(getObjectParams);
+					const url = await getSignedUrl(S3, command, { expiresIn: 604800 });
 
-            const { clip_id } = await ClipsModel.insert({
-                title,
-                key: clipKey,
-                clip_url: url,
-                date: formatedDate,
-                establishment_name: name,
-                video_id: parseInt(video_id, 10)
-            });
+					const { clip_id } = await ClipsModel.insert({
+						title,
+						key: clipKey,
+						clip_url: url,
+						date: formatedDate,
+						establishment_name: name,
+						video_id: parseInt(video_id, 10)
+					});
 
-						await Promise.all(
-                segments.map((segment) => deleteFile(segment))
-            );
-            await deleteFile(m3u8Path);
-						await deleteFile(outputFilePath);
+								await Promise.all(
+						segments.map((segment) => deleteFile(segment))
+					);
+					await deleteFile(m3u8Path);
+								await deleteFile(outputFilePath);
 
-            resolve(new Response(JSON.stringify({ clipId: clip_id }), { status: 200 }));
-          } catch (error) {
-              reject(error);
-          }
-        })
-        .on('error', (err) => {
-            reject(err);
-        })
-        .run();
-        });
+					resolve(new Response(JSON.stringify({ clipId: clip_id }), { status: 200 }));
+				} catch (error) {
+					reject(error);
+				}
+				})
+				.on('error', (err) => {
+					reject(err);
+				})
+				.run();
+			});
       return response;
 	} catch (error) {
 		console.error(error);

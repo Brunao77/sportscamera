@@ -12,11 +12,11 @@ export default defineConfig({
   ],
   output: "server",
   adapter: vercel(),
-  vite: {
+  /*vite: {
     build: {
       rollupOptions: { 
         external: ['@ffmpeg-installer/ffmpeg'],
       },
     },
-  }
+  }*/
 });

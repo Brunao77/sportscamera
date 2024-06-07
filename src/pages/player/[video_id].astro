@@ -22,7 +22,6 @@ import ffmpeg from 'fluent-ffmpeg';
 import { Writable } from 'stream';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuidv4 } from 'uuid'
-import { path as ffmpegPath } from '@ffmpeg-installer/ffmpeg';
 
 const { video_id } = Astro.params
 
@@ -117,8 +116,6 @@ if(Astro.request.method === 'POST'){
 		const outputFilePath = path.join(root, '/tmp', `${clipName}.mp4`);
 
 		const response = await new Promise((resolve, reject) => {
-			ffmpeg.setFfmpegPath(ffmpegPath);
-
 			ffmpeg()
 				.input(m3u8Path)
 				.setStartTime(TIME_OFFSET)

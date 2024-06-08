@@ -1,15 +1,15 @@
 ---
-import Navbar from "../components/Navbar.astro"
 import Input from "../components/Input.astro"
 import { EstablishmentModel } from "../models/establishment";
 import { CameraModel } from "../models/camera";
 import Button from "../components/Button.astro";
 import Establishment from "../icons/Establishment.astro";
-import Camera from "../icons/Camera.astro";
 import LayoutEstablishment from "../layouts/LayoutEstablishment.astro";
 import Email from "../icons/Email.astro";
 import Password from "../icons/Password.astro";
-import Field from "../icons/Field.astro";
+import { UserModel } from "../models/user";
+import Success from "../components/Success.astro"
+import { Argon2id } from "oslo/password";
 
 const user = Astro.locals.user;
 if (!user) {
@@ -17,136 +17,186 @@ if (!user) {
 }
 
 if(user.role !== 'A'){
-    return Astro.redirect("/sign-in");
+	return Astro.redirect("/sign-in");
+}
+let error = ""
+let success = ""
+
+if(Astro.request.method === 'POST'){
+	const formData = await Astro.request.formData()
+	const name = formData.get('name')
+	const role = formData.get('role')
+	const email = formData.get('email')
+	const password = formData.get('password')
+	const confirm_password = formData.get('confirm_password')
+
+	if(!name || !role || !email || !password || !confirm_password){
+		error = "Campos requeridos" 
+		return new Response("Campos requeridos", { status:404 })
+	}
+
+	if(password !== confirm_password){
+		error = "Contraseñas no coinciden" 
+		return new Response("Contraseñas no coinciden", { status:404 })
+	}
+
+	if(password.length < 5){
+		error = "Contraseña no corresponde" 
+		return new Response("Contraseña no corresponde", { status:404 })
+	}
+
+	const { establishment_id } = await EstablishmentModel.insert({ name })
+	
+	if(!establishment_id){
+		error = "Establecimiento no se pudo crear"
+		return new Response("Establecimiento no se pudo crear", { status:404 })
+	}
+
+	const argon2id = new Argon2id();
+	const passwordHash = await argon2id.hash(password);
+
+	await UserModel.signup({ email, password: passwordHash, establishment_id, role, payment: true })
+
+	const camerasData = [];
+	formData.forEach((value, key) => {
+		const match = key.match(/cameras\[(\d+)\]\[(\w+)\]/);
+		if (match) {
+		const index = match[1];
+		const field = match[2];
+
+		if (!camerasData[index]) {
+			camerasData[index] = {};
+		}
+		camerasData[index][field] = value;
+		}
+	});
+
+	for (const cameraData of camerasData) {
+		const { field_name, rtsp, rtsp_low } = cameraData
+		await CameraModel.insert({ field_name, rtsp, rtsp_low, establishment_id })
+	}
+
+	success = "Creación con éxito"
+	return new Response("Creación con éxito", { status:200 })
 }
 ---
 
 <LayoutEstablishment title="Agregar / SportsCamera!">
-	<Navbar />
-	<section class="bg-white h-full md:rounded-r-xl text-center z-0 w-full">
-		<strong class="font-medium text-2xl md:text-3xl text-primary text-nowrap">Configuracion</strong>
-        <form method="POST"  class="text-start p-3" id="user_form">
-            <strong class="text-primary text-2xl font-medium">Usuario</strong>
-            <div class="flex flex-wrap my-2 gap-4">
-                <label>
-                    Email
-                    <Input placeholder="Email" name="email" type="email" required>
-                        <Email />
-                    </Input>
-                </label>
-                <label>
-                    Contraseña
-                    <Input placeholder="Contraseña" name="password" type="password" required>
-                        <Password />
-                    </Input>
-                </label>
-                <label>
-                    Confirmar Contraseña
-                    <Input placeholder="Contraseña" name="confirm_password" type="password" required>
-                        <Password />
-                    </Input>
-                </label>
-                <label>
-                    Rol
-                    <select name="role" required>
-                        <option value="E">Establecimiento</option>
-                        <option value="A">Admin</option>
-                    </select>
-                </label>
-                <label>
-                    Nombre Establecimiento
-                    <Input placeholder="Nombre" name="name" type="text" required>
-                        <Establishment />
-                    </Input>
-                </label>
-            </div>
-            <div class="flex md:justify-end w-100 mt-5 gap-5">
-                <Button type="submit" id="save_btn">
-                    <span id="content_btn">GUARDAR USUARIO</span>
-				    <div class='w-6 h-6 border-4 border-ice border-l-transparent rounded-full animate-spin hidden' id="spinner"></div>
-                </Button>
-            </div>
-        </form>
-        <form method="POST"  class="text-start p-3" id="cameras_form">
-            <strong class="text-primary text-2xl font-medium">CÁMARAS</strong>
-            <div class="flex flex-wrap my-2 gap-4">
-                <camera-container></camera-container>
-                <!--<label>
-                    Nombre cancha
-                    <Input placeholder="Cancha" name="field_name" type="text" required>
-                        <Field />
-                    </Input>
-                </label>
-                <label>
-                    Rtsp principal
-                    <Input placeholder="Rtsp principal" name="rtsp" type="text" required>
-                        <Camera />
-                    </Input>
-                </label>
-                <label>
-                    Rtsp secundario
-                    <Input placeholder="Rtsp secundario" name="rtsp_low" type="text" required>
-                        <Camera />
-                    </Input>
-                </label>-->
-                <button id="add_camera_btn">+</button>
-            </div>
-            <div class="flex md:justify-end w-100 mt-5 gap-5">
-                <Button type="submit" id="save_btn">
-                    <span id="content_btn">GUARDAR USUARIO</span>
-				    <div class='w-6 h-6 border-4 border-ice border-l-transparent rounded-full animate-spin hidden' id="spinner"></div>
-                </Button>
-            </div>
-        </form>
+	<section class="bg-white h-full md:rounded-r-xl text-center z-0 w-full overflow-hidden">
+		<strong class="font-medium text-2xl md:text-3xl text-primary text-nowrap">Agregar Establecimiento</strong>
+		<form method="POST" class="text-start p-3 overflow-hidden" id="form">
+			<div>
+				<strong class="text-primary text-2xl font-medium">Usuario</strong>
+				<div class="flex flex-wrap md:mb-2 justify-between">
+					<label>
+						Email
+						<Input placeholder="Email" name="email" type="email" notSvg={false} required>
+							<Email />
+						</Input>
+					</label>
+					<label>
+						Contraseña
+						<Input placeholder="Contraseña" name="password" type="password" required notSvg={false} minlength="5">
+							<Password />
+						</Input>
+					</label>
+					<label>
+						Confirmar Contraseña
+						<Input placeholder="Contraseña" name="confirm_password" type="password" notSvg={false} required>
+							<Password />
+						</Input>
+					</label>
+					<label class="flex flex-col">
+						Rol
+						<select name="role" required class="border border-primary disabled:border-gray-200 border-2 w-full h-full outline-none cursor-pointer rounded-lg p-2 focus:ring-primary focus:border-primary overflow-y-scroll">
+							<option value="E">Establecimiento</option>
+							<option value="A">Admin</option>
+						</select>
+					</label>
+					<label>
+						Nombre Establecimiento
+						<Input placeholder="Nombre" name="name" type="text" notSvg={false} required>
+							<Establishment />
+						</Input>
+					</label>
+				</div>
+			</div>
+			<div id="cameras_container" class="overflow-auto h-fit max-h-[300px] md:max-h-[500px]">
+				<strong class="text-primary text-2xl font-medium">Cámaras</strong>
+				<button id="remove_camera_btn" type="button" class="hidden bg-primary rounded-xl text-white font-medium text-xl w-14 py-1">-</button>
+				<button id="add_camera_btn" type="button" class="bg-primary rounded-xl text-white font-medium text-xl w-14 py-1">+</button>
+			</div>
+			<div class="flex md:justify-end w-100 mt-5 gap-5">
+				<Button type="submit" id="save_btn">
+					<span id="content_btn">Guardar</span>
+					<div class='w-6 h-6 border-4 border-ice border-l-transparent rounded-full animate-spin hidden' id="spinner"></div>
+				</Button>
+			</div>
+		</form>
+		{error && <span class="text-red-400">{error}</span>}
 	</section>
-    <script is:inline>
-        document.addEventListener('astro:page-load', ()=>{
-            const form = document.getElementById('form')
-            const saveBtn = document.getElementById('save_btn')
+	{success && <Success message={success} redirect="/add" />}
+	<script is:inline>
+		document.addEventListener('astro:page-load', ()=>{
+			const form = document.getElementById('form')
+			const saveBtn = document.getElementById('save_btn')
 			const contentBtn = document.getElementById('content_btn')
 			const spinner = document.getElementById('spinner')
-            const addCameraBtn = document.getElementById("add_camera_btn")
+			const addCameraBtn = document.getElementById("add_camera_btn")
+			const removeCameraBtn = document.getElementById("remove_camera_btn")
+			const camerasContainer = document.getElementById('cameras_container')
 
-            form.addEventListener('submit', ()=>{
-                saveBtn.disabled = true
-                contentBtn.style.display = "none"
-                spinner.classList.remove('hidden')
-            })
+			class AddCamera extends HTMLElement {
+				constructor(index) {
+					super();
+					this.innerHTML = `
+					<hr class="md:hidden">
+					<div class="flex flex-wrap mb-2 justify-between">
+						<label>
+							Nombre cancha
+							<input placeholder="Cancha" name="cameras[${index}][field_name]" type="text" required class="bg-white w-full border-primary border-2 outline-0 px-4 py-1 md:py-3 text-black rounded-xl placeholder-terciary disabled:border-primary_disabled"></input>
+						</label>
+						<label>
+							Rtsp principal
+							<input placeholder="Rtsp principal" name="cameras[${index}][rtsp]" type="text" required class="bg-white w-full border-primary border-2 outline-0 px-4 py-1 md:py-3 text-black rounded-xl placeholder-terciary disabled:border-primary_disabled"></input>
+						</label>
+						<label>
+							Rtsp secundario
+							<input placeholder="Rtsp secundario" name="cameras[${index}][rtsp_low]" type="text" required class="bg-white w-full border-primary border-2 outline-0 px-4 py-1 md:py-3 text-black rounded-xl placeholder-terciary disabled:border-primary_disabled"></input>
+						</label>
+					</div>
+					`;
+				}
+			}
 
-            class CameraContainer extends HTMLElement {
-                constructor(index) {
-                    super();
-                    this.innerHTML = `
-                        <label>
-                            Nombre cancha
-                            <Input placeholder="Cancha" name="cameras[${index}][field_name]" type="text" required>
-                                <Field />
-                            </Input>
-                        </label>
-                        <label>
-                            Rtsp principal
-                            <Input placeholder="Rtsp principal" name="cameras[${index}][rtsp]" type="text" required>
-                                <Camera />
-                            </Input>
-                        </label>
-                        <label>
-                            Rtsp secundario
-                            <Input placeholder="Rtsp secundario" name="cameras[${index}][rtsp_low]" type="text" required>
-                                <Camera />
-                            </Input>
-                        </label>
-                    `;
-                }
-            }
+			customElements.define('add-camera-container', AddCamera);
 
-            customElements.define('camera-container', CameraContainer);
+			let cameraIndex = 0;
 
-            let cameraIndex = 0;
+			const addCamera = new AddCamera(cameraIndex);
+			camerasContainer.insertBefore(addCamera, removeCameraBtn);
 
-            addCameraBtn.addEventListener('click', function() {
-                const cameraContainer = new CameraContainer(cameraIndex++);
-                document.getElementById('cameras_form').insertBefore(cameraContainer, document.getElementById('save_btn').parentElement);
-            })
-        }, { once: false })
-    </script>
+			addCameraBtn.addEventListener('click', function() {
+				cameraIndex++
+				const addCamera = new AddCamera(cameraIndex);
+				camerasContainer.insertBefore(addCamera, removeCameraBtn);
+				removeCameraBtn.classList.remove('hidden')
+			})
+
+			removeCameraBtn.addEventListener('click', function() {
+				const lastCamera = camerasContainer.querySelectorAll('add-camera-container');
+				if (lastCamera.length > 0) {
+					lastCamera[lastCamera.length - 1].remove();
+					cameraIndex--;
+					if (lastCamera.length === 2) removeCameraBtn.classList.add('hidden');
+				}
+			})
+			
+			form.addEventListener('submit', () =>{
+				saveBtn.disabled = true
+				contentBtn.style.display = 'none'
+				spinner.classList.remove('hidden')
+			})
+		}, { once: false })
+	</script>
 </LayoutEstablishment>

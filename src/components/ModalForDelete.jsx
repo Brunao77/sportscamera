@@ -3,7 +3,6 @@ import { convertirFormatoFecha } from "../utils"
 export default function ModalForDelete({ listVideos, setListVideos, videoForDelete, setVideoForDelete }) {
     const handleDelete = async () =>{
         setVideoForDelete(null)
-        console.log(videoForDelete)
         const toastSuccess = document.getElementById('toast_success')
         const toastInfo = document.getElementById('toast_info')
         const spinner = toastSuccess.querySelector('.spinner')

@@ -8,7 +8,7 @@ if (!user) {
 	return Astro.redirect("/sign-in");
 }
 
-if(user.role !== 'A' || user.role !== 'E'){
+if(user.role !== 'A' && user.role !== 'E'){
     return Astro.redirect("/sign-in");
 }
 
@@ -22,7 +22,6 @@ if (!pago && today.getDate() <= 7) {
 }
 ---
 <LayoutEstablishment title="Payment / Sportscamera!">
-    <Navbar />
     <section class="bg-white w-full  h-full md:rounded-r-xl text-center z-0 ">
 		<strong class="font-medium text-2xl md:text-3xl text-primary text-nowrap">Pago suscripción</strong>
         <div class="p-3">

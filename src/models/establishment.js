@@ -40,7 +40,7 @@ export class EstablishmentModel {
         VALUES ($1) RETURNING establishment_id`,
         [name]
       );
-      return rows;
+      return rows[0];
     } catch (error) {
       console.log(error);
     }

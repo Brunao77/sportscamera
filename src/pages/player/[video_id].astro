@@ -22,6 +22,9 @@ import ffmpeg from 'fluent-ffmpeg';
 import { Writable } from 'stream';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuidv4 } from 'uuid'
+import { path as ffmpegPath } from "@ffmpeg-installer/ffmpeg"
+
+ffmpeg.setFfmpegPath(ffmpegPath)
 
 const { video_id } = Astro.params
 
@@ -45,8 +48,10 @@ const clips = await ClipsModel.getAllByVideoId({ video_id: parseInt(video_id, 10
 
 if(Astro.request.method === 'POST'){
 	try {
-		const { title, start, end } = await Astro.request.json()
+		let { title, start, end } = await Astro.request.json()
 
+		if(start === 0) start = 0.1
+		
 		const __filename = fileURLToPath(import.meta.url);
 		const __dirname = path.dirname(__filename);
 		const root = path.resolve(__dirname, "..", "..", "..")
@@ -70,20 +75,18 @@ if(Astro.request.method === 'POST'){
 			const localPath = path.join(root,'/tmp', ts);
 			const writeStream = fs.createWriteStream(localPath);
 			const writeableStream = Writable.toWeb(writeStream)
+			
 			redeableStream.pipeTo(writeableStream)
 
-			return localPath;
+			return localPath
 		};
 
 		const deleteFile = (filePath) => {
 			return new Promise((resolve, reject) => {
-					fs.unlink(filePath, (err) => {
-							if (err) {
-									reject(err);
-							} else {
-									resolve();
-							}
-					});
+				fs.unlink(filePath, (err) => {
+					if (err) reject(err);
+					else resolve();
+				});
 			});
 		};
 
@@ -117,12 +120,14 @@ if(Astro.request.method === 'POST'){
 
 		const response = await new Promise((resolve, reject) => {
 			ffmpeg()
-				.input(m3u8Path)
-				.setStartTime(TIME_OFFSET)
-				.duration(end - start)
-				.outputOptions('-c copy')
-				.output(outputFilePath)
-				.on('end', async () => {
+			.input(m3u8Path)
+            .inputOptions([`-ss ${TIME_OFFSET}`])  // Ensure -ss is used as an input option
+            .outputOptions([`-t ${end - start}`, '-c copy'])
+            .output(outputFilePath)
+			.on('start', (commandLine) => {
+				console.log('Spawned FFmpeg with command:', commandLine);
+			})
+			.on('end', async () => {
 				try {
 					const clipKey = `${clipName}.mp4`;
 
@@ -153,22 +158,23 @@ if(Astro.request.method === 'POST'){
 						video_id: parseInt(video_id, 10)
 					});
 
-								await Promise.all(
+					await Promise.all(
 						segments.map((segment) => deleteFile(segment))
 					);
 					await deleteFile(m3u8Path);
-								await deleteFile(outputFilePath);
+					await deleteFile(outputFilePath);
 
 					resolve(new Response(JSON.stringify({ clipId: clip_id }), { status: 200 }));
 				} catch (error) {
 					reject(error);
 				}
-				})
-				.on('error', (err) => {
-					reject(err);
-				})
-				.run();
-			});
+			})
+			.on('error', (err, stdout, stderr) => {
+            	console.log('An error occurred: ' + err.message, err, stderr);
+				reject(err);
+			})
+			.run();
+		});
       return response;
 	} catch (error) {
 		console.error(error);
@@ -410,6 +416,7 @@ if(Astro.request.method === 'POST'){
 					this.disabled = true
 					contentBtn.classList.add('hidden')
 					spinner.classList.remove('hidden')
+
 					
 					const res = await fetch(window.location.pathname, {
 						method: 'POST',
@@ -438,6 +445,7 @@ if(Astro.request.method === 'POST'){
 					this.disabled = false
 					contentBtn.classList.remove('hidden')
 					spinner.classList.add('hidden')
+					clipTitle.value = ''
 				})
 
 				clipBtn.addEventListener('click', function(){
@@ -479,6 +487,7 @@ if(Astro.request.method === 'POST'){
 					currentDurationStopClipSeconds = video.currentTime
 					stopChronometer();
 					video.pause()
+					clipTitle.value = ''
 					filterBg.classList.remove('hidden')
 					saveClipForm.classList.remove('hidden')
 					modalOpen = true

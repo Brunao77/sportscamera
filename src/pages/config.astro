@@ -15,7 +15,7 @@ if (!user) {
 	return Astro.redirect("/sign-in");
 }
 
-if(user.role !== 'A' || user.role !== 'E'){
+if(user.role !== 'A' && user.role !== 'E'){
     return Astro.redirect("/sign-in");
 }
 
@@ -74,7 +74,6 @@ if(Astro.request.method === 'POST'){
 ---
 
 <LayoutEstablishment title="Config / SportsCamera!">
-	<Navbar />
 	<section class="bg-white h-full md:rounded-r-xl text-center z-0 w-full">
 		<strong class="font-medium text-2xl md:text-3xl text-primary text-nowrap">Configuracion</strong>
         <form method="POST"  class="text-start p-3" id="form">
@@ -82,7 +81,7 @@ if(Astro.request.method === 'POST'){
             <div class="flex flex-wrap my-2 gap-4">
                 <label>
                     Nombre
-                    <Input placeholder="Nombre" name="name" value={updateData.name ? updateData.name : establishment.name} type="text" required>
+                    <Input placeholder="Nombre" name="name" value={updateData.name ? updateData.name : establishment.name} type="text" notSvg={false} required>
                         <Establishment />
                     </Input>
                     {errors.name && <span class="text-red-500 text-md">{errors.name}</span>}
@@ -90,7 +89,7 @@ if(Astro.request.method === 'POST'){
                 {cameras.map(({field_name}, index)=>{
                     return <label>
                         Nombre cámara {index+1}
-                        <Input type="text" placeholder={`Camara ${index+1}`} name={`camera_${index+1}`} value={updateData.cameras[index] ? updateData.cameras[index] : field_name} required>
+                        <Input type="text" placeholder={`Camara ${index+1}`} name={`camera_${index+1}`} value={updateData.cameras[index] ? updateData.cameras[index] : field_name} notSvg={false} required>
                             <Camera />
                         </Input>
                         {errors.cameras[index] && <span class="text-red-500 text-md">{errors.cameras[index]}</span>}
@@ -98,21 +97,21 @@ if(Astro.request.method === 'POST'){
                 })}
                 <label>
                     Dirección
-                    <Input placeholder="Dirección" name="address" value={updateData.address ? updateData.address : establishment.address} type="text" required>
+                    <Input placeholder="Dirección" name="address" value={updateData.address ? updateData.address : establishment.address} type="text" notSvg={false} required>
                         <Address />
                     </Input>
                     {errors.address && <span class="text-red-500 text-md">{errors.address}</span>}
                 </label>
                 <label>
                     Teléfono (ej: 3114681299)
-                    <Input placeholder="Teléfono" name="phone" value={updateData.phone ? updateData.phone : establishment.phone} type="tel" pattern="[0-9]*" maxlength=20>
+                    <Input placeholder="Teléfono" name="phone" value={updateData.phone ? updateData.phone : establishment.phone} type="tel" pattern="[0-9]*" notSvg={false} maxlength=20>
                         <Phone />
                     </Input>
                 </label>
             </div>
             <div class="flex md:justify-end w-100 mt-5 gap-5">
                 <Button type="submit" id="save_btn">
-                    <span id="content_btn">GUARDAR CAMBIOS</span>
+                    <span id="content_btn">Guardar</span>
 				    <div class='w-6 h-6 border-4 border-ice border-l-transparent rounded-full animate-spin hidden' id="spinner"></div>
                 </Button>
             </div>

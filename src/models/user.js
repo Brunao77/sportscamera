@@ -12,11 +12,11 @@ export class UserModel {
       console.log(error);
     }
   }
-  static async signup({ email, password }) {
+  static async signup({ email, password, establishment_id, role, payment }) {
     try {
       const result = await pool.query(
-        "INSERT INTO USERS(email, password) VALUES ($1, $2)",
-        [email, password]
+        "INSERT INTO USERS(email, password, establishment_id, role, payment) VALUES ($1, $2, $3, $4, $5)",
+        [email, password, establishment_id, role, payment]
       );
       return result;
     } catch (error) {

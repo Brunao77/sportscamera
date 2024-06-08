@@ -15,6 +15,7 @@
     "@astrojs/vercel": "^7.6.0",
     "@aws-sdk/client-s3": "^3.577.0",
     "@aws-sdk/s3-request-presigner": "^3.590.0",
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@lucia-auth/adapter-postgresql": "^3.1.2",
     "astro": "^4.6.1",
     "ffmpeg-static": "^5.2.0",

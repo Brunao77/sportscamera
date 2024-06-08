@@ -6,7 +6,7 @@ import Email from '../icons/Email.astro';
 import Password from '../icons/Password.astro';
 import { lucia } from "../auth.ts";
 import { UserModel } from "../models/user.js"
-import { Argon2id  } from "oslo/password";
+import { Argon2id } from "oslo/password";
 
 const user = Astro.locals.user;
 if (user) {
@@ -55,10 +55,10 @@ if(Astro.request.method === 'POST'){
 	<section class="bg-white md:px-32 h-full md:rounded-l-xl md:rounded-br-none flex flex-col gap-5 items-center justify-center px-20 md:py-20">
 		<strong class="text-5xl text-primary font-medium text-nowrap">Iniciar sesión</strong>
 		<form method="POST" class="flex flex-col gap-4" id="loginForm">
-			<Input placeholder="Usuario" name="email" required type="email">
+			<Input placeholder="Usuario" name="email" required notSvg="false" notSvg={false} type="email">
 				<Email />
 			</Input>
-			<Input placeholder="Contraseña" name='password' required type="password" minlength="5">
+			<Input placeholder="Contraseña" name='password' required type="password" notSvg="false" notSvg={false} minlength="5">
 				<Password />
 			</Input>
 			{error && <span class="text-center text-red-500 text-sm" id="errorSpan">{error}</span>}

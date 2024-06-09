@@ -106,7 +106,7 @@ if(Astro.request.method === 'POST'){
 
 		const __filename = fileURLToPath(import.meta.url);
 		const __dirname = path.dirname(__filename);
-		const root = path.resolve(__dirname, "..", "..");
+		const root = path.resolve(__dirname, "..");
 
 		const intStart = Math.trunc(start / 20);
 		const intEnd = Math.trunc(end / 20);

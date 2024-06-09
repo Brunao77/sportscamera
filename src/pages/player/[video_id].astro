@@ -47,137 +47,149 @@ const { name, address, phone } = await EstablishmentModel.getById({ establishmen
 const clips = await ClipsModel.getAllByVideoId({ video_id: parseInt(video_id, 10) })
 
 if(Astro.request.method === 'POST'){
-	try {
-		let { title, start, end } = await Astro.request.json()
+	const downloadSegment = async (ts, root) => {
+		const params = {
+			Bucket: import.meta.env.BUCKET_NAME,
+			Key: ts
+		};
+		try {
+			const { Body } = await S3.send(new GetObjectCommand(params));
+			const readableStream = Body.transformToWebStream();
+			const localPath = path.join(root, '/tmp', ts);
+			const writeStream = fs.createWriteStream(localPath);
+			const writableStream = Writable.toWeb(writeStream);
 
-		if(start === 0) start = 0.1
-		
+			await readableStream.pipeTo(writableStream);
+
+			console.log(`Segment downloaded: ${localPath}`);
+			return localPath;
+		} catch (error) {
+			console.error(`Error downloading segment ${ts}:`, error);
+			throw error;
+		}
+	};
+
+	const deleteFile = (filePath) => {
+		return new Promise((resolve, reject) => {
+			fs.unlink(filePath, (err) => {
+				if (err) {
+					console.error(`Error deleting file ${filePath}:`, err);
+					reject(err);
+				} else {
+					console.log(`File deleted: ${filePath}`);
+					resolve();
+				}
+			});
+		});
+	};
+
+	const createM3U8Content = (segments, intStart) => {
+		const m3u8Content = [
+			'#EXTM3U',
+			'#EXT-X-VERSION:3',
+			`#EXT-X-TARGETDURATION: 20`,
+			`#EXT-X-MEDIA-SEQUENCE: ${intStart}`,
+		];
+
+		segments.forEach(segment => {
+			m3u8Content.push('#EXTINF:20.000000,');
+			m3u8Content.push(segment);
+		});
+
+		m3u8Content.push('#EXT-X-ENDLIST');
+		return m3u8Content.join('\n');
+	};
+
+	try {
+		let { title, start, end } = await Astro.request.json();
+		if (start === 0) start = 0.1;
+
 		const __filename = fileURLToPath(import.meta.url);
 		const __dirname = path.dirname(__filename);
-		const root = path.resolve(__dirname, "..", "..", "..")
+		const root = path.resolve(__dirname, "..", "..", "..");
 
-		const intStart = Math.trunc((start / 20));
-		const intEnd = Math.trunc((end / 20));
+		const intStart = Math.trunc(start / 20);
+		const intEnd = Math.trunc(end / 20);
 
 		const TIME_OFFSET = start - (intStart * 20);
 
 		const newDate = new Date(date);
-		const formatedDate = newDate.toISOString().split('T')[0];
-		const formatedTime = start_time.split(':').slice(0, 2).join('-');
-
-		const downloadSegment = async (ts) => {
-			const params = {
-				Bucket: import.meta.env.BUCKET_NAME,
-				Key: ts
-			};
-			const { Body } = await S3.send(new GetObjectCommand(params));
-			const redeableStream = Body.transformToWebStream()
-			const localPath = path.join(root,'/tmp', ts);
-			const writeStream = fs.createWriteStream(localPath);
-			const writeableStream = Writable.toWeb(writeStream)
-			
-			redeableStream.pipeTo(writeableStream)
-
-			return localPath
-		};
-
-		const deleteFile = (filePath) => {
-			return new Promise((resolve, reject) => {
-				fs.unlink(filePath, (err) => {
-					if (err) reject(err);
-					else resolve();
-				});
-			});
-		};
-
-		const m3u8Content = [
-				'#EXTM3U',
-				'#EXT-X-VERSION:3',
-				`#EXT-X-TARGETDURATION: 20`,
-				`#EXT-X-MEDIA-SEQUENCE: ${intStart}`,
-		];
+		const formattedDate = newDate.toISOString().split('T')[0];
+		const formattedTime = start_time.split(':').slice(0, 2).join('-');
 
 		const segments = [];
 		for (let i = intStart; i <= intEnd; i++) {
-				const ts = `${camera_id}a${formatedDate}a${formatedTime}a${i}.ts`;
-				segments.push(await downloadSegment(ts));
-				m3u8Content.push(`#EXTINF:20.000000,`)
-				m3u8Content.push(ts);
+			const ts = `${camera_id}a${formattedDate}a${formattedTime}a${i}.ts`;
+			segments.push(await downloadSegment(ts, root));
 		}
-		m3u8Content.push('#EXT-X-ENDLIST');
 
-		const m3u8String = m3u8Content.join('\n');
+		const m3u8String = createM3U8Content(segments, intStart);
+		const clipName = `clip_${uuidv4()}`;
+		const m3u8Path = path.join(root, '/tmp', `${clipName}.m3u8`);
 
-		const clipName =  `clip_${uuidv4()}`
-
-		const m3u8Path = path.join(root,'/tmp', `${clipName}.m3u8`);
-		const writeStream = fs.createWriteStream(m3u8Path);
-		const m3u8 = Buffer.from(m3u8String)
-		writeStream.write(m3u8);
-		writeStream.end();
+		fs.writeFileSync(m3u8Path, m3u8String);
+		console.log(`M3U8 file created: ${m3u8Path}`);
 
 		const outputFilePath = path.join(root, '/tmp', `${clipName}.mp4`);
 
 		const response = await new Promise((resolve, reject) => {
 			ffmpeg()
-			.input(m3u8Path)
-            .inputOptions([`-ss ${TIME_OFFSET}`])  // Ensure -ss is used as an input option
-            .outputOptions([`-t ${end - start}`, '-c copy'])
-            .output(outputFilePath)
-			.on('start', (commandLine) => {
-				console.log('Spawned FFmpeg with command:', commandLine);
-			})
-			.on('end', async () => {
-				try {
-					const clipKey = `${clipName}.mp4`;
+				.input(m3u8Path)
+				.inputOptions([`-ss ${TIME_OFFSET}`])  // Ensure -ss is used as an input option
+				.outputOptions([`-t ${end - start}`, '-c copy'])
+				.output(outputFilePath)
+				.on('start', (commandLine) => {
+					console.log('Spawned FFmpeg with command:', commandLine);
+				})
+				.on('end', async () => {
+					try {
+						const clipKey = `${clipName}.mp4`;
 
-					const fileStream = fs.createReadStream(outputFilePath);
-					const uploadParams = {
-						Bucket: import.meta.env.BUCKET_NAME,
-						Key: clipKey,
-						Body: fileStream,
-						ContentType: "video/mp4"
-					};
+						const fileStream = fs.createReadStream(outputFilePath);
+						const uploadParams = {
+							Bucket: import.meta.env.BUCKET_NAME,
+							Key: clipKey,
+							Body: fileStream,
+							ContentType: "video/mp4"
+						};
 
-					await S3.send(new PutObjectCommand(uploadParams));
+						await S3.send(new PutObjectCommand(uploadParams));
 
-					const getObjectParams = {
-						Bucket: import.meta.env.BUCKET_NAME,
-						Key: clipKey
-					};
+						const getObjectParams = {
+							Bucket: import.meta.env.BUCKET_NAME,
+							Key: clipKey
+						};
 
-					const command = new GetObjectCommand(getObjectParams);
-					const url = await getSignedUrl(S3, command, { expiresIn: 604800 });
+						const command = new GetObjectCommand(getObjectParams);
+						const url = await getSignedUrl(S3, command, { expiresIn: 604800 });
 
-					const { clip_id } = await ClipsModel.insert({
-						title,
-						key: clipKey,
-						clip_url: url,
-						date: formatedDate,
-						establishment_name: name,
-						video_id: parseInt(video_id, 10)
-					});
+						const { clip_id } = await ClipsModel.insert({
+							title,
+							key: clipKey,
+							clip_url: url,
+							date: formattedDate,
+							establishment_name: name,
+							video_id: parseInt(video_id, 10)
+						});
 
-					await Promise.all(
-						segments.map((segment) => deleteFile(segment))
-					);
-					await deleteFile(m3u8Path);
-					await deleteFile(outputFilePath);
-
-					resolve(new Response(JSON.stringify({ clipId: clip_id }), { status: 200 }));
-				} catch (error) {
-					reject(error);
-				}
-			})
-			.on('error', (err, stdout, stderr) => {
-            	console.log('An error occurred: ' + err.message, err, stderr);
-				reject(err);
-			})
-			.run();
+						await Promise.all(segments.map((segment) => deleteFile(segment)));
+						await deleteFile(m3u8Path);
+						await deleteFile(outputFilePath);
+						resolve(new Response(JSON.stringify({ clipId: clip_id }), { status: 200 }));
+					} catch (error) {
+						reject(error);
+					}
+				})
+				.on('error', (err, stdout, stderr) => {
+					console.log('An error occurred:', err.message, err, stderr);
+					reject(err);
+				})
+				.run();
 		});
-      return response;
+
+		return response;
 	} catch (error) {
-		console.error(error);
+		console.error('Error processing request:', error);
 		return new Response('Error al procesar la solicitud', { status: 500 });
 	}
 }
@@ -217,50 +229,50 @@ if(Astro.request.method === 'POST'){
 					</div>
 				</div>
 			</div>
-		</div>
-		<div id="modal_container" class="hidden absolute bg-black/[.5] w-[300px] right-[1%] bottom-[8%] rounded py-1 px-2 text-white">
-			<div id="info_modal" class="hidden flex flex-col gap-1">
-				<h1 class="text-[#9F4AA0] font-medium truncate" title={name}>{name}</h1>
-				<span class="truncate" title={field_name}>{field_name}</span>
-				<span class="truncate" title={address}>Dir: {address}</span>
-				<span class="truncate" title={phone}>Tel: {phone}</span>
-				<span class="truncate" title={convertirFormatoFecha(date)}>Día: {convertirFormatoFecha(date)}</span>
-				<span class="truncate" title={`${start_time.slice(0,-3)} - ${end_time.slice(0,-3)}`}>Hs: {start_time.slice(0,-3)} - {end_time.slice(0,-3)}</span>
-			</div>
-			<div id="clip_list_modal" class="hidden overflow-hidden flex flex-col max-h-[400px]">
-				<h1 class="text-[#9F4AA0] font-medium truncate py-2" title="Lista clips">Lista de clips</h1>
-				<ul class="overflow-auto h-full">
-					{clips.length !==0 ? clips.map(({ clip_id, title })=>{
-						return <li class="flex items-center justify-between hover:bg-[#A6A5A5]/[.3] p-1 rounded"><span class="truncate">{title}</span><a class="rounded px-2 underline" href={`/clip/${clip_id}`} target="_blank">Ver</a></li>
-					}) : <span>No hay clips para este video</span>}
+			<div id="modal_container" class="hidden absolute bg-black/[.5] w-[300px] right-[1%] bottom-[8%] rounded py-1 px-2 text-white">
+				<div id="info_modal" class="hidden flex flex-col gap-1">
+					<h1 class="text-[#9F4AA0] font-medium truncate" title={name}>{name}</h1>
+					<span class="truncate" title={field_name}>{field_name}</span>
+					<span class="truncate" title={address}>Dir: {address}</span>
+					<span class="truncate" title={phone}>Tel: {phone}</span>
+					<span class="truncate" title={convertirFormatoFecha(date)}>Día: {convertirFormatoFecha(date)}</span>
+					<span class="truncate" title={`${start_time.slice(0,-3)} - ${end_time.slice(0,-3)}`}>Hs: {start_time.slice(0,-3)} - {end_time.slice(0,-3)}</span>
+				</div>
+				<div id="clip_list_modal" class="hidden overflow-hidden flex flex-col max-h-[400px]">
+					<h1 class="text-[#9F4AA0] font-medium truncate py-2" title="Lista clips">Lista de clips</h1>
+					<ul class="overflow-auto h-full">
+						{clips.length !==0 ? clips.map(({ clip_id, title })=>{
+							return <li class="flex items-center justify-between hover:bg-[#A6A5A5]/[.3] p-1 rounded"><span class="truncate">{title}</span><a class="rounded px-2 underline" href={`/clip/${clip_id}`} target="_blank">Ver</a></li>
+						}) : <span>No hay clips para este video</span>}
+					</ul>
+				</div>
+				<ul class="hidden flex flex-col" id="rate_opts">
+					<li class="hover:bg-[#A6A5A5]/[.3] p-1" data-rate="0.5">0.5</li>
+					<li class="hover:bg-[#A6A5A5]/[.3] p-1" data-rate="0.75">0.75</li>
+					<li class="hover:bg-[#A6A5A5]/[.3] p-1" data-rate="1">Normal</li>
+					<li class="hover:bg-[#A6A5A5]/[.3] p-1" data-rate="1.5">1.5</li>
+					<li class="hover:bg-[#A6A5A5]/[.3] p-1" data-rate="2">2</li>
 				</ul>
 			</div>
-			<ul class="hidden flex flex-col" id="rate_opts">
-				<li class="hover:bg-[#A6A5A5]/[.3] p-1" data-rate="0.5">0.5</li>
-				<li class="hover:bg-[#A6A5A5]/[.3] p-1" data-rate="0.75">0.75</li>
-				<li class="hover:bg-[#A6A5A5]/[.3] p-1" data-rate="1">Normal</li>
-				<li class="hover:bg-[#A6A5A5]/[.3] p-1" data-rate="1.5">1.5</li>
-				<li class="hover:bg-[#A6A5A5]/[.3] p-1" data-rate="2">2</li>
-			</ul>
-		</div>
-		<div class="fixed left-0 top-0 w-full h-full bg-black/[.5] hidden" id="filter_bg"></div>
-		<form id="save_clip_form" class=" hidden bg-black/[.7] text-white w-full md:w-[400px] absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 flex flex-col rounded p-2 gap-3">
-			<span class="absolute right-3 top-2 text-2xl font-bold close_modal cursor-pointer">X</span>
-			<h1 class="text-2xl text-nowrap">Crear Clip</h1>
-			<label>Ponele un título a tu clip
-			<Input id="clip_title" required placeholder="Título" notSvg /></label>
-			<button type="submit" class="flex items-center justify-center cursor-pointer rounded w-[150px] bg-primary p-2 disabled:bg-primary_disabled">
-				<span id="content_btn">Guardar Clip</span>
-				<div class='w-6 h-6 border-4 border-ice border-l-transparent rounded-full animate-spin hidden' id="spinner"></div>
-			</button>
-		</form>
-		<div id="clip_success_modal" class="hidden bg-black/[.7] text-white w-full md:w-[400px] absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 flex flex-col rounded p-2 gap-3">
-			<span class="absolute right-3 top-2 text-2xl font-bold close_modal cursor-pointer">X</span>
-			<h1 class="text-2xl text-nowrap">Clip creado con éxito</h1>
-			<div class="flex items-center flex-col gap-2">
-				<button id="copy_link_button" class="flex items-center justify-center cursor-pointer rounded w-[250px] bg-primary p-2 disabled:bg-primary_disabled">Copiar link</button>
-				<button id="view_clip_button" class="flex items-center justify-center cursor-pointer rounded w-[250px] bg-primary p-2 disabled:bg-primary_disabled">Ver clip</button>
-				<button id="download_button" class="flex items-center justify-center cursor-pointer rounded w-[250px] bg-primary p-2 disabled:bg-primary_disabled">Descargar</button>
+			<div class="fixed left-0 top-0 w-full h-full bg-black/[.5] hidden" id="filter_bg"></div>
+			<form id="save_clip_form" class=" hidden bg-black/[.7] text-white w-full md:w-[400px] absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 flex flex-col rounded p-2 gap-3">
+				<span class="absolute right-3 top-2 text-2xl font-bold close_modal cursor-pointer">X</span>
+				<h1 class="text-2xl text-nowrap">Crear Clip</h1>
+				<label>Ponele un título a tu clip
+				<Input id="clip_title" required placeholder="Título" notSvg /></label>
+				<button type="submit" class="flex items-center justify-center cursor-pointer rounded w-[150px] bg-primary p-2 disabled:bg-primary_disabled">
+					<span id="content_btn">Guardar Clip</span>
+					<div class='w-6 h-6 border-4 border-ice border-l-transparent rounded-full animate-spin hidden' id="spinner"></div>
+				</button>
+			</form>
+			<div id="clip_success_modal" class="hidden bg-black/[.7] text-white w-full md:w-[400px] absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 flex flex-col rounded p-2 gap-3">
+				<span class="absolute right-3 top-2 text-2xl font-bold close_modal cursor-pointer">X</span>
+				<h1 class="text-2xl text-nowrap">Clip creado con éxito</h1>
+				<div class="flex items-center flex-col gap-2">
+					<button id="copy_link_button" class="flex items-center justify-center cursor-pointer rounded w-[250px] bg-primary p-2 disabled:bg-primary_disabled">Copiar link</button>
+					<button id="view_clip_button" class="flex items-center justify-center cursor-pointer rounded w-[250px] bg-primary p-2 disabled:bg-primary_disabled">Ver clip</button>
+					<button id="download_button" class="flex items-center justify-center cursor-pointer rounded w-[250px] bg-primary p-2 disabled:bg-primary_disabled">Descargar</button>
+				</div>
 			</div>
 		</div>
 		<style is:global>
@@ -417,7 +429,6 @@ if(Astro.request.method === 'POST'){
 					contentBtn.classList.add('hidden')
 					spinner.classList.remove('hidden')
 
-					
 					const res = await fetch(window.location.pathname, {
 						method: 'POST',
 						headers: {
@@ -459,6 +470,7 @@ if(Astro.request.method === 'POST'){
 					playpause.disabled = true
 					info.disabled = true
 					clipList.disabled = true
+					rate.disabled = true
 					progress.style.pointerEvents = 'none'
 					video.style.pointerEvents = 'none'
 					clipBtn.setAttribute('clip-state', 'stop')
@@ -478,6 +490,7 @@ if(Astro.request.method === 'POST'){
 					playpause.disabled = false
 					info.disabled = false
 					clipList.disabled = false
+					rate.disabled = false
 					progress.style.pointerEvents = 'auto'
 					video.style.pointerEvents = 'auto'
 					clipBtn.setAttribute('clip-state', 'start')

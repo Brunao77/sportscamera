@@ -21,7 +21,6 @@ export default function ModalSearch({ selectedVideo, setSelectedVideo }) {
         <div class={`absolute z-50 flex flex-col align-between justify-between bg-white rounded-2xl w-full md:w-fit md:px-4 h-1/3 p-2 top-[50%] left-[50%] -translate-x-1/2 -translate-y-1/2`} id="modal_container">
             <section class="flex flex-col items-start h-100">
                 <strong class="text-md md:text-xl mb-3">¿Qué quiere hacer con el siguiente video?</strong>
-                <span class="text-sm md:text-md">Nombre: {selectedVideo.name}</span>
                 <span class="text-sm md:text-md">Cancha: {selectedVideo.field_name}</span>
                 <span class="text-sm md:text-md">Fecha: {convertirFormatoFecha(selectedVideo.date)}</span>
                 <span class="text-sm md:text-md">Horario: {selectedVideo && selectedVideo.start_time.slice(0,-3)} a {selectedVideo && selectedVideo.end_time.slice(0,-3)}</span>

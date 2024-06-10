@@ -119,7 +119,7 @@ if(Astro.request.method === 'POST'){
 			const command = ffmpeg()
 				.input(`${import.meta.env.BUCKET_URL}${m3u8S3}`)
 				.inputOptions([`-ss ${TIME_OFFSET}`])
-				.outputOptions([`-t ${end - start}`, '-c copy', '-f mp4'])
+				.outputOptions([`-t ${end - start}`, '-c:v libvpx', '-f webm'])
 				.on('start', (commandLine) => {
 					console.log('Spawned FFmpeg with command:', commandLine);
 				})
@@ -137,14 +137,14 @@ if(Astro.request.method === 'POST'){
 			});
 			passThroughStream.on('end', async () => {
 				try {
-					const clipKey = `clip_${uuidv4()}.mp4`;
+					const clipKey = `clip_${uuidv4()}.webm`;
 
 					const buffer = Buffer.concat(buffers);
 					const uploadParams = {
 							Bucket: import.meta.env.BUCKET_NAME,
 							Key: clipKey,
 							Body: buffer,
-							ContentType: 'video/mp4',
+							ContentType: 'video/webm',
 					};
 
 					await S3.send(new PutObjectCommand(uploadParams));

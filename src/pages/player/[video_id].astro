@@ -17,13 +17,11 @@ import { S3 } from '../../s3.js';
 import { PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3"
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import ffmpeg from 'fluent-ffmpeg';
 import { Writable } from 'stream';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuidv4 } from 'uuid'
 import { path as ffmpegPath } from "@ffmpeg-installer/ffmpeg"
-import os from 'os';
 import { PassThrough } from 'stream';
 
 ffmpeg.setFfmpegPath(ffmpegPath)
@@ -115,15 +113,13 @@ if(Astro.request.method === 'POST'){
 		const formattedDate = newDate.toISOString().split('T')[0];
 		const formattedTime = start_time.split(':').slice(0, 2).join('-');
 		const m3u8S3 =  `${camera_id}a${formattedDate}a${formattedTime}a.m3u8`;
-		const clipName = `clip_${uuidv4()}`;
-		const outputFilePath = path.join(os.tmpdir(), `${clipName}.mp4`);
 		const passThroughStream = new PassThrough();
 
 		const response = await new Promise((resolve, reject) => {
 			const command = ffmpeg()
 				.input(`${import.meta.env.BUCKET_URL}${m3u8S3}`)
 				.inputOptions([`-ss ${TIME_OFFSET}`])
-				.outputOptions([`-t ${end - start}`, '-c:v libvpx', '-f webm'])
+				.outputOptions([`-t ${end - start}`, '-c copy', '-f mp4'])
 				.on('start', (commandLine) => {
 					console.log('Spawned FFmpeg with command:', commandLine);
 				})
@@ -141,14 +137,14 @@ if(Astro.request.method === 'POST'){
 			});
 			passThroughStream.on('end', async () => {
 				try {
-					const clipKey = `clip_${uuidv4()}.webm`;
+					const clipKey = `clip_${uuidv4()}.mp4`;
 
 					const buffer = Buffer.concat(buffers);
 					const uploadParams = {
 							Bucket: import.meta.env.BUCKET_NAME,
 							Key: clipKey,
 							Body: buffer,
-							ContentType: 'video/webm',
+							ContentType: 'video/mp4',
 					};
 
 					await S3.send(new PutObjectCommand(uploadParams));

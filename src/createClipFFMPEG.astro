@@ -47,70 +47,83 @@ const { name, address, phone } = await EstablishmentModel.getById({ establishmen
 const clips = await ClipsModel.getAllByVideoId({ video_id: parseInt(video_id, 10) })
 
 if(Astro.request.method === 'POST'){
-    const {title, start, end} = await Astro.request.json();
+	try {
+		let { title, start, end } = await Astro.request.json();
 
-    const intStart = Math.trunc((start / 20))
-    const intEnd = Math.trunc((end / 20))
+		const intStart = Math.trunc(start / 20);
 
-    //const lastSegmentDuration = end - (intEnd * 20);
-	//const TIME_OFFSET = start - (intStart * 20);
+		const TIME_OFFSET = start - (intStart * 20);
 
-    const newDate = new Date(date);
-    const formatedDate = newDate.toISOString().split('T')[0];
-    const formatedTime = start_time.split(':').slice(0, 2).join('-');
+		if (start === 0) start = 0.1;
 
-    const m3u8Content = [
-        '#EXTM3U',
-        '#EXT-X-VERSION:3',
-        `#EXT-X-TARGETDURATION: 20`,
-        `#EXT-X-MEDIA-SEQUENCE: ${intStart}`,
-    ];
+		const newDate = new Date(date);
+		const formattedDate = newDate.toISOString().split('T')[0];
+		const formattedTime = start_time.split(':').slice(0, 2).join('-');
+		const m3u8S3 =  `${camera_id}a${formattedDate}a${formattedTime}a.m3u8`;
+		const passThroughStream = new PassThrough();
 
-    for (let i = intStart; i <= intEnd; i++) {
-        const ts = `${camera_id}a${formatedDate}a${formatedTime}a${i}.ts`
-		m3u8Content.push(`#EXTINF:20.000000,`)
-        m3u8Content.push(ts);
-        /*if(i !== intEnd){
-            m3u8Content.push(`#EXTINF:20.000000,`)
-            m3u8Content.push(ts);
-        }else{
-            m3u8Content.push(`#EXTINF:${lastSegmentDuration},`)
-            m3u8Content.push(ts);
-        }*/
-    }
+		const response = await new Promise((resolve, reject) => {
+			const command = ffmpeg()
+				.input(`${import.meta.env.BUCKET_URL}${m3u8S3}`)
+				.inputOptions([`-ss ${TIME_OFFSET}`])
+				.outputOptions([`-t ${end - start}`, '-c:v libvpx', '-f webm'])
+				.on('start', (commandLine) => {
+					console.log('Spawned FFmpeg with command:', commandLine);
+				})
+				.on('error', (err) => {
+					console.error('FFmpeg error:', err);
+					reject(err);
+				})
 
-    m3u8Content.push('#EXT-X-ENDLIST');
+			// Collect data into buffers
+			const buffers = [];
+			command.pipe(passThroughStream);
+			passThroughStream.on('data', (chunk) => {
+				buffers.push(chunk);
+			});
+			passThroughStream.on('end', async () => {
+				try {
+					const clipKey = `clip_${uuidv4()}.webm`;
 
-    const m3u8String = m3u8Content.join('\n');
+					const buffer = Buffer.concat(buffers);
+					const uploadParams = {
+							Bucket: import.meta.env.BUCKET_NAME,
+							Key: clipKey,
+							Body: buffer,
+							ContentType: 'video/webm',
+					};
 
-    const key = `clip_${uuidv4()}.m3u8`
+					await S3.send(new PutObjectCommand(uploadParams));
 
-    try {
-        const params = {
-            Bucket: "sportscamera040621",
-            Key: key,
-            Body: m3u8String,
-            ContentType: "application/vnd.apple.mpegurl"
-        };
+					const getObjectParams = {
+							Bucket: import.meta.env.BUCKET_NAME,
+							Key: clipKey
+					};
 
-        await S3.send(new PutObjectCommand(params));
+					const command = new GetObjectCommand(getObjectParams);
+					const url = await getSignedUrl(S3, command, { expiresIn: 604800 });
 
-		const getObjectParams = {
-			Bucket: import.meta.env.BUCKET_NAME,
-			Key: key
-		};
+					const { clip_id } = await ClipsModel.insert({
+							title,
+							key: clipKey,
+							clip_url: url,
+							date: formattedDate,
+							establishment_name: name,
+							video_id: parseInt(video_id, 10)
+					});
 
-		const command = new GetObjectCommand(getObjectParams);
-		const clip_url = await getSignedUrl(S3, command, { expiresIn: 604800 });
+					resolve(new Response(JSON.stringify({ clipId: clip_id }), { status: 200 }));
+				} catch (error) {
+						reject(error);
+				}
+			});
+		});
 
-        const { clip_id } = await ClipsModel.insert({ title, key, clip_url, date: formatedDate, establishment_name: name, video_id: parseInt(video_id, 10) })
-
-        return new Response(JSON.stringify({ clip_id }), { status: 200 })
-
-    } catch (error) {
-        error = 'Error al subir el clip'
-        console.error("Error al subir el archivo a S3:", error);
-    }
+		return response;
+	} catch (error) {
+		console.error('Error processing request:', error);
+		return new Response('Error al procesar la solicitud', { status: 500 });
+	}
 }
 ---
 <!doctype html>
@@ -187,8 +200,8 @@ if(Astro.request.method === 'POST'){
 								<span class="absolute right-3 top-2 text-2xl font-bold close_modal cursor-pointer">X</span>
 								<h1 class="text-2xl text-nowrap">Clip creado con éxito</h1>
 								<div class="flex items-center flex-col gap-2">
-										<button id="view_clip_button" class="flex items-center justify-center cursor-pointer rounded w-[250px] bg-primary p-2 disabled:bg-primary_disabled">Ver clip</button>
 										<button id="copy_link_button" class="flex items-center justify-center cursor-pointer rounded w-[250px] bg-primary p-2 disabled:bg-primary_disabled">Copiar link</button>
+										<button id="view_clip_button" class="flex items-center justify-center cursor-pointer rounded w-[250px] bg-primary p-2 disabled:bg-primary_disabled">Ver clip</button>
 										<button id="download_button" class="flex items-center justify-center cursor-pointer rounded w-[250px] bg-primary p-2 disabled:bg-primary_disabled">Descargar</button>
 								</div>
 						</div>
@@ -355,7 +368,7 @@ if(Astro.request.method === 'POST'){
 												body: JSON.stringify(clipData)
 										})
 										if(res.ok){
-												const { clip_id } =  await res.json()
+												const { clipId } =  await res.json()
 												saveClipForm.classList.add('hidden')
 												successModal.classList.remove('hidden')
 												modalOpen = true
@@ -364,11 +377,11 @@ if(Astro.request.method === 'POST'){
 												const viewClipButton = document.getElementById('view_clip_button');
 
 												copyLinkButton.addEventListener('click', async () => {
-														await navigator.clipboard.writeText(`${window.location.origin}/clip/${clip_id}`)
+														await navigator.clipboard.writeText(`${window.location.origin}/clip/${clipId}`)
 												});
 
 												viewClipButton.addEventListener('click', () => {
-														window.open(`/clip/${clip_id}`, '_blank');
+														window.open(`/clip/${clipId}`, '_blank');
 												});
 										}
 										this.disabled = false
@@ -646,8 +659,6 @@ if(Astro.request.method === 'POST'){
 										clearInterval(intervalId);
 								}
 						});
-
-						
 				</script>
 		</body>
 </html>

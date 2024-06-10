@@ -13,5 +13,5 @@
 [ x ] Arreglar close modal /player
 [ x ] Agregar menu opciones para roles de usuario
 [ x ] Arreglar Icon en input
-[   ] Backend /add y btn funcionalidad cuando vengo desde otra opcion
-[   ] Como guardo el output del ffmpeg para subirlo a aws /record
+[ x ] Backend /add y btn funcionalidad cuando vengo desde otra opcion
+[   ] Crear clip ffmpeg a webm /record * FUNCIONALIDAD CREADA PERO NO IMPLEMENTADA EN VERCEL YA QUE CONSUME MUCHO, CONTRATAR VPS * *TEMPORALMENTE SE CREAN LOS CLIPS CON M3U8*

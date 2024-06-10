@@ -121,8 +121,8 @@ if(Astro.request.method === 'POST'){
 					</label>
 				</div>
 			</div>
+			<strong class="text-primary text-2xl font-medium my-2">Cámaras</strong>
 			<div id="cameras_container" class="overflow-auto h-fit max-h-[300px] md:max-h-[500px]">
-				<strong class="text-primary text-2xl font-medium">Cámaras</strong>
 				<button id="remove_camera_btn" type="button" class="hidden bg-primary rounded-xl text-white font-medium text-xl w-14 py-1">-</button>
 				<button id="add_camera_btn" type="button" class="bg-primary rounded-xl text-white font-medium text-xl w-14 py-1">+</button>
 			</div>
@@ -149,7 +149,7 @@ if(Astro.request.method === 'POST'){
 			constructor(index) {
 				super();
 				this.innerHTML = `
-				<hr class="md:hidden">
+				<hr class="md:hidden bg-primary">
 				<div class="flex flex-wrap mb-2 justify-between">
 					<label>
 						Nombre cancha

@@ -24,18 +24,19 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuidv4 } from 'uuid'
 import { path as ffmpegPath } from "@ffmpeg-installer/ffmpeg"
 import os from 'os';
+import { PassThrough } from 'stream';
 
 ffmpeg.setFfmpegPath(ffmpegPath)
 
 const { video_id } = Astro.params
 
 if(!video_id)
-	return Astro.redirect("/");
+		return Astro.redirect("/");
 
 const video = await VideosModel.getById({ video_id: parseInt(video_id, 10) })
 
 if(!video)
-	return Astro.redirect("/");
+		return Astro.redirect("/");
 
 const { camera_id, date, start_time, end_time, video_url } = video
 
@@ -49,67 +50,62 @@ const clips = await ClipsModel.getAllByVideoId({ video_id: parseInt(video_id, 10
 
 if(Astro.request.method === 'POST'){
 	const downloadSegment = async (ts, root) => {
-		const params = {
-			Bucket: import.meta.env.BUCKET_NAME,
-			Key: ts
-		};
-		try {
-			const { Body } = await S3.send(new GetObjectCommand(params));
-			const readableStream = Body.transformToWebStream();
-			const localPath = path.join(root, '/tmp', ts);
-			const writeStream = fs.createWriteStream(localPath);
-			const writableStream = Writable.toWeb(writeStream);
+			const params = {
+					Bucket: import.meta.env.BUCKET_NAME,
+					Key: ts
+			};
+			try {
+					const { Body } = await S3.send(new GetObjectCommand(params));
+					const readableStream = Body.transformToWebStream();
+					const localPath = path.join(root, '/tmp', ts);
+					const writeStream = fs.createWriteStream(localPath);
+					const writableStream = Writable.toWeb(writeStream);
 
-			await readableStream.pipeTo(writableStream);
+					await readableStream.pipeTo(writableStream);
 
-			console.log(`Segment downloaded: ${localPath}`);
-			return localPath;
-		} catch (error) {
-			console.error(`Error downloading segment ${ts}:`, error);
-			throw error;
-		}
+					console.log(`Segment downloaded: ${localPath}`);
+					return localPath;
+			} catch (error) {
+					console.error(`Error downloading segment ${ts}:`, error);
+					throw error;
+			}
 	};
 
 	const deleteFile = (filePath) => {
-		return new Promise((resolve, reject) => {
-			fs.unlink(filePath, (err) => {
-				if (err) {
-					console.error(`Error deleting file ${filePath}:`, err);
-					reject(err);
-				} else {
-					console.log(`File deleted: ${filePath}`);
-					resolve();
-				}
+			return new Promise((resolve, reject) => {
+					fs.unlink(filePath, (err) => {
+							if (err) {
+									console.error(`Error deleting file ${filePath}:`, err);
+									reject(err);
+							} else {
+									console.log(`File deleted: ${filePath}`);
+									resolve();
+							}
+					});
 			});
-		});
 	};
 
 	const createM3U8Content = (segments, intStart) => {
-		const m3u8Content = [
-			'#EXTM3U',
-			'#EXT-X-VERSION:3',
-			`#EXT-X-TARGETDURATION: 20`,
-			`#EXT-X-MEDIA-SEQUENCE: ${intStart}`,
-		];
+			const m3u8Content = [
+					'#EXTM3U',
+					'#EXT-X-VERSION:3',
+					`#EXT-X-TARGETDURATION: 20`,
+					`#EXT-X-MEDIA-SEQUENCE: ${intStart}`,
+			];
 
-		segments.forEach(segment => {
-			m3u8Content.push('#EXTINF:20.000000,');
-			m3u8Content.push(segment);
-		});
+			segments.forEach(segment => {
+					m3u8Content.push('#EXTINF:20.000000,');
+					m3u8Content.push(segment);
+			});
 
-		m3u8Content.push('#EXT-X-ENDLIST');
-		return m3u8Content.join('\n');
+			m3u8Content.push('#EXT-X-ENDLIST');
+			return m3u8Content.join('\n');
 	};
 
 	try {
 		let { title, start, end } = await Astro.request.json();
 
-		const __filename = fileURLToPath(import.meta.url);
-		const __dirname = path.dirname(__filename);
-		const root = path.resolve(__dirname, "..", "..");
-
 		const intStart = Math.trunc(start / 20);
-		const intEnd = Math.trunc(end / 20);
 
 		const TIME_OFFSET = start - (intStart * 20);
 
@@ -121,676 +117,609 @@ if(Astro.request.method === 'POST'){
 		const m3u8S3 =  `${camera_id}a${formattedDate}a${formattedTime}a.m3u8`;
 		const clipName = `clip_${uuidv4()}`;
 		const outputFilePath = path.join(os.tmpdir(), `${clipName}.mp4`);
+		const passThroughStream = new PassThrough();
 
 		const response = await new Promise((resolve, reject) => {
-			ffmpeg()
+			const command = ffmpeg()
 				.input(`${import.meta.env.BUCKET_URL}${m3u8S3}`)
 				.inputOptions([`-ss ${TIME_OFFSET}`])
-				.outputOptions([`-t ${end - start}`, '-c copy'])
-				.output(outputFilePath)
+				.outputOptions([`-t ${end - start}`, '-c:v libvpx', '-f webm'])
 				.on('start', (commandLine) => {
 					console.log('Spawned FFmpeg with command:', commandLine);
 				})
-				.on('end', async () => {
-					try {
-						const clipKey = `${clipName}.mp4`;
+				.on('error', (err, stdout, stderr) => {
+					console.error('FFmpeg error:', err);
+					console.error('FFmpeg stderr:', stderr);
+					reject(err);
+				})
 
-						const fileStream = fs.createReadStream(outputFilePath);
-						const uploadParams = {
+			// Collect data into buffers
+			const buffers = [];
+			command.pipe(passThroughStream);
+			passThroughStream.on('data', (chunk) => {
+				buffers.push(chunk);
+			});
+			passThroughStream.on('end', async () => {
+				try {
+					const clipKey = `clip_${uuidv4()}.webm`;
+
+					const buffer = Buffer.concat(buffers);
+					const uploadParams = {
 							Bucket: import.meta.env.BUCKET_NAME,
 							Key: clipKey,
-							Body: fileStream,
-							ContentType: "video/mp4"
-						};
+							Body: buffer,
+							ContentType: 'video/webm',
+					};
 
-						await S3.send(new PutObjectCommand(uploadParams));
+					await S3.send(new PutObjectCommand(uploadParams));
 
-						const getObjectParams = {
+					const getObjectParams = {
 							Bucket: import.meta.env.BUCKET_NAME,
 							Key: clipKey
-						};
+					};
 
-						const command = new GetObjectCommand(getObjectParams);
-						const url = await getSignedUrl(S3, command, { expiresIn: 604800 });
+					const command = new GetObjectCommand(getObjectParams);
+					const url = await getSignedUrl(S3, command, { expiresIn: 604800 });
 
-						const { clip_id } = await ClipsModel.insert({
+					const { clip_id } = await ClipsModel.insert({
 							title,
 							key: clipKey,
 							clip_url: url,
 							date: formattedDate,
 							establishment_name: name,
 							video_id: parseInt(video_id, 10)
-						});
+					});
 
-						
-						resolve(new Response(JSON.stringify({ clipId: clip_id }), { status: 200 }));
-					} catch (error) {
+					resolve(new Response(JSON.stringify({ clipId: clip_id }), { status: 200 }));
+				} catch (error) {
 						reject(error);
-					}
-				})
-				.on('error', (err, stdout, stderr) => {
-					console.log('An error occurred:', err.message, err, stderr);
-					reject(err);
-				})
-				.run();
+				}
+			});
 		});
 
 		return response;
-
-		/*const segments = [];
-		for (let i = intStart; i <= intEnd; i++) {
-			const ts = `${camera_id}a${formattedDate}a${formattedTime}a${i}.ts`;
-			segments.push(await downloadSegment(ts, root));
-		}
-
-		const m3u8String = createM3U8Content(segments, intStart);
-		const clipName = `clip_${uuidv4()}`;
-		const m3u8Path = path.join(root, '/tmp', `${clipName}.m3u8`);
-
-		fs.writeFileSync(m3u8Path, m3u8String);
-		console.log(`M3U8 file created: ${m3u8Path}`);
-
-		const outputFilePath = path.join(root, '/tmp', `${clipName}.mp4`);
-
-		const response = await new Promise((resolve, reject) => {
-			ffmpeg()
-				.input(m3u8Path)
-				.inputOptions([`-ss ${TIME_OFFSET}`])  // Ensure -ss is used as an input option
-				.outputOptions([`-t ${end - start}`, '-c copy'])
-				.output(outputFilePath)
-				.on('start', (commandLine) => {
-					console.log('Spawned FFmpeg with command:', commandLine);
-				})
-				.on('end', async () => {
-					try {
-						const clipKey = `${clipName}.mp4`;
-
-						const fileStream = fs.createReadStream(outputFilePath);
-						const uploadParams = {
-							Bucket: import.meta.env.BUCKET_NAME,
-							Key: clipKey,
-							Body: fileStream,
-							ContentType: "video/mp4"
-						};
-
-						await S3.send(new PutObjectCommand(uploadParams));
-
-						const getObjectParams = {
-							Bucket: import.meta.env.BUCKET_NAME,
-							Key: clipKey
-						};
-
-						const command = new GetObjectCommand(getObjectParams);
-						const url = await getSignedUrl(S3, command, { expiresIn: 604800 });
-
-						const { clip_id } = await ClipsModel.insert({
-							title,
-							key: clipKey,
-							clip_url: url,
-							date: formattedDate,
-							establishment_name: name,
-							video_id: parseInt(video_id, 10)
-						});
-
-						await Promise.all(segments.map((segment) => deleteFile(segment)));
-						await deleteFile(m3u8Path);
-						await deleteFile(outputFilePath);
-						resolve(new Response(JSON.stringify({ clipId: clip_id }), { status: 200 }));
-					} catch (error) {
-						reject(error);
-					}
-				})
-				.on('error', (err, stdout, stderr) => {
-					console.log('An error occurred:', err.message, err, stderr);
-					reject(err);
-				})
-				.run();
-		});
-
-		return response;*/
 	} catch (error) {
-		console.error('Error processing request:', error);
-		return new Response('Error al procesar la solicitud', { status: 500 });
+			console.error('Error processing request:', error);
+			return new Response('Error al procesar la solicitud', { status: 500 });
 	}
 }
 ---
-
 <!doctype html>
 <html class="h-full" lang="es">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="description" content="Astro description" />
-		<meta name="viewport" content="width=device-width" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Player / Sportscamera!</title>
-	</head>
-	<body class="overflow-hidden h-full">
-		<div id="videoContainer" class="relative h-full bg-black" data-fullscreen="false">
-			<div class='absolute top-1/2 left-1/2 w-20 h-20 border-4 border-white border-l-transparent rounded-full animate-spin hidden' id="spinnerVideo"></div>
-			<video id="video" class="object-cover w-full" preload="metadata"></video>
-			<div class="bg-red-700 absolute top-5 left-1/2 -translate-x-1/2 text-white text-2xl rounded px-5 py-2 hidden" id="clip_chronometer">00:00</div>
-			<div id="video-controls" class="absolute bottom-0 w-full flex flex-col px-3 py-1 gap-1" data-state="hidden">
-				<progress id="progress" class="w-full overflow-hidden h-[7px] rounded-lg color-primary cursor-pointer hover:h-[10px]" min="0" value="0"><span id="progress-bar"></span></progress>
-				<span id="tooltip" class="absolute text-white top-[-50%]"></span>
-				<div class="flex justify-between items-end md:items-center px-2">
-					<div class="flex gap-2 md:gap-5 items-center flex-row">
-						<button id="track_prev" tabindex="-1"><TrackPrev /></button>
-						<button id="playpause" data-state="play"><Play id="play_icon" /><Stop hidden id="stop_icon" /></button>
-						<button id="track_next" tabindex="-1"><TrackNext /></button>
-						<button class="border-2 h-6 w-6 rounded-full flex items-center justify-center" id="clip_btn" clip-state="start" tabindex="-1"><div class="bg-white h-3 w-3 rounded-full" id="clip_state"></div></button>
-						<div class="text-white text-md order-3 md:order-none"><span id="current_time">0:00</span> / <span id="duration">0:00:00</span></div>
-					</div>
-					<div class="flex flex-row items-center gap-2 md:gap-5">
-						<button id="info" tabindex="-1"><Info /></button>
-						<button id="clip_list_btn" tabindex="-1"><ClipList /></button>
-						<button class="text-white text-lg font-medium rounded" id="rate" tabindex="-1">x1</button>
-						<button id="fs" data-state="maximize" tabindex="-1"><Maximize id="maximize_icon" /><Minimize hidden id="minimize_icon"/></button>
-					</div>
+		<head>
+				<meta charset="UTF-8" />
+				<meta name="description" content="Astro description" />
+				<meta name="viewport" content="width=device-width" />
+				<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+				<meta name="generator" content={Astro.generator} />
+				<title>Player / Sportscamera!</title>
+		</head>
+		<body class="overflow-hidden h-full">
+				<div id="videoContainer" class="relative h-full bg-black" data-fullscreen="false">
+						<div class='absolute top-1/2 left-1/2 w-20 h-20 border-4 border-white border-l-transparent rounded-full animate-spin hidden' id="spinnerVideo"></div>
+						<video id="video" class="object-cover w-full" preload="metadata"></video>
+						<div class="bg-red-700 absolute top-5 left-1/2 -translate-x-1/2 text-white text-2xl rounded px-5 py-2 hidden" id="clip_chronometer">00:00</div>
+						<div id="video-controls" class="absolute bottom-0 w-full flex flex-col px-3 py-1 gap-1" data-state="hidden">
+								<progress id="progress" class="w-full overflow-hidden h-[7px] rounded-lg color-primary cursor-pointer hover:h-[10px]" min="0" value="0"><span id="progress-bar"></span></progress>
+								<span id="tooltip" class="absolute text-white top-[-50%]"></span>
+								<div class="flex justify-between items-end md:items-center px-2">
+										<div class="flex gap-2 md:gap-5 items-center flex-row">
+												<button id="track_prev" tabindex="-1"><TrackPrev /></button>
+												<button id="playpause" data-state="play"><Play id="play_icon" /><Stop hidden id="stop_icon" /></button>
+												<button id="track_next" tabindex="-1"><TrackNext /></button>
+												<button class="border-2 h-6 w-6 rounded-full flex items-center justify-center" id="clip_btn" clip-state="start" tabindex="-1"><div class="bg-white h-3 w-3 rounded-full" id="clip_state"></div></button>
+												<div class="text-white text-md order-3 md:order-none"><span id="current_time">0:00</span> / <span id="duration">0:00:00</span></div>
+										</div>
+										<div class="flex flex-row items-center gap-2 md:gap-5">
+												<button id="info" tabindex="-1"><Info /></button>
+												<button id="clip_list_btn" tabindex="-1"><ClipList /></button>
+												<button class="text-white text-lg font-medium rounded" id="rate" tabindex="-1">x1</button>
+												<button id="fs" data-state="maximize" tabindex="-1"><Maximize id="maximize_icon" /><Minimize hidden id="minimize_icon"/></button>
+										</div>
+								</div>
+						</div>
+						<div id="modal_container" class="hidden absolute bg-black/[.5] w-[300px] right-[1%] bottom-[8%] rounded py-1 px-2 text-white">
+								<div id="info_modal" class="hidden flex flex-col gap-1">
+										<h1 class="text-[#9F4AA0] font-medium truncate" title={name}>{name}</h1>
+										<span class="truncate" title={field_name}>{field_name}</span>
+										<span class="truncate" title={address}>Dir: {address}</span>
+										<span class="truncate" title={phone}>Tel: {phone}</span>
+										<span class="truncate" title={convertirFormatoFecha(date)}>Día: {convertirFormatoFecha(date)}</span>
+										<span class="truncate" title={`${start_time.slice(0,-3)} - ${end_time.slice(0,-3)}`}>Hs: {start_time.slice(0,-3)} - {end_time.slice(0,-3)}</span>
+								</div>
+								<div id="clip_list_modal" class="hidden overflow-hidden flex flex-col max-h-[400px]">
+										<h1 class="text-[#9F4AA0] font-medium truncate py-2" title="Lista clips">Lista de clips</h1>
+										<ul class="overflow-auto h-full">
+												{clips.length !==0 ? clips.map(({ clip_id, title })=>{
+														return <li class="flex items-center justify-between hover:bg-[#A6A5A5]/[.3] p-1 rounded"><span class="truncate">{title}</span><a class="rounded px-2 underline" href={`/clip/${clip_id}`} target="_blank">Ver</a></li>
+												}) : <span>No hay clips para este video</span>}
+										</ul>
+								</div>
+								<ul class="hidden flex flex-col" id="rate_opts">
+										<li class="hover:bg-[#A6A5A5]/[.3] p-1" data-rate="0.5">0.5</li>
+										<li class="hover:bg-[#A6A5A5]/[.3] p-1" data-rate="0.75">0.75</li>
+										<li class="hover:bg-[#A6A5A5]/[.3] p-1" data-rate="1">Normal</li>
+										<li class="hover:bg-[#A6A5A5]/[.3] p-1" data-rate="1.5">1.5</li>
+										<li class="hover:bg-[#A6A5A5]/[.3] p-1" data-rate="2">2</li>
+								</ul>
+						</div>
+						<div class="fixed left-0 top-0 w-full h-full bg-black/[.5] hidden" id="filter_bg"></div>
+						<form id="save_clip_form" class=" hidden bg-black/[.7] text-white w-full md:w-[400px] absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 flex flex-col rounded p-2 gap-3">
+								<span class="absolute right-3 top-2 text-2xl font-bold close_modal cursor-pointer">X</span>
+								<h1 class="text-2xl text-nowrap">Crear Clip</h1>
+								<label>Ponele un título a tu clip
+								<Input id="clip_title" required placeholder="Título" notSvg /></label>
+								<button type="submit" class="flex items-center justify-center cursor-pointer rounded w-[150px] bg-primary p-2 disabled:bg-primary_disabled">
+										<span id="content_btn">Guardar Clip</span>
+										<div class='w-6 h-6 border-4 border-ice border-l-transparent rounded-full animate-spin hidden' id="spinner"></div>
+								</button>
+						</form>
+						<div id="clip_success_modal" class="hidden bg-black/[.7] text-white w-full md:w-[400px] absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 flex flex-col rounded p-2 gap-3">
+								<span class="absolute right-3 top-2 text-2xl font-bold close_modal cursor-pointer">X</span>
+								<h1 class="text-2xl text-nowrap">Clip creado con éxito</h1>
+								<div class="flex items-center flex-col gap-2">
+										<button id="copy_link_button" class="flex items-center justify-center cursor-pointer rounded w-[250px] bg-primary p-2 disabled:bg-primary_disabled">Copiar link</button>
+										<button id="view_clip_button" class="flex items-center justify-center cursor-pointer rounded w-[250px] bg-primary p-2 disabled:bg-primary_disabled">Ver clip</button>
+										<button id="download_button" class="flex items-center justify-center cursor-pointer rounded w-[250px] bg-primary p-2 disabled:bg-primary_disabled">Descargar</button>
+								</div>
+						</div>
 				</div>
-			</div>
-			<div id="modal_container" class="hidden absolute bg-black/[.5] w-[300px] right-[1%] bottom-[8%] rounded py-1 px-2 text-white">
-				<div id="info_modal" class="hidden flex flex-col gap-1">
-					<h1 class="text-[#9F4AA0] font-medium truncate" title={name}>{name}</h1>
-					<span class="truncate" title={field_name}>{field_name}</span>
-					<span class="truncate" title={address}>Dir: {address}</span>
-					<span class="truncate" title={phone}>Tel: {phone}</span>
-					<span class="truncate" title={convertirFormatoFecha(date)}>Día: {convertirFormatoFecha(date)}</span>
-					<span class="truncate" title={`${start_time.slice(0,-3)} - ${end_time.slice(0,-3)}`}>Hs: {start_time.slice(0,-3)} - {end_time.slice(0,-3)}</span>
-				</div>
-				<div id="clip_list_modal" class="hidden overflow-hidden flex flex-col max-h-[400px]">
-					<h1 class="text-[#9F4AA0] font-medium truncate py-2" title="Lista clips">Lista de clips</h1>
-					<ul class="overflow-auto h-full">
-						{clips.length !==0 ? clips.map(({ clip_id, title })=>{
-							return <li class="flex items-center justify-between hover:bg-[#A6A5A5]/[.3] p-1 rounded"><span class="truncate">{title}</span><a class="rounded px-2 underline" href={`/clip/${clip_id}`} target="_blank">Ver</a></li>
-						}) : <span>No hay clips para este video</span>}
-					</ul>
-				</div>
-				<ul class="hidden flex flex-col" id="rate_opts">
-					<li class="hover:bg-[#A6A5A5]/[.3] p-1" data-rate="0.5">0.5</li>
-					<li class="hover:bg-[#A6A5A5]/[.3] p-1" data-rate="0.75">0.75</li>
-					<li class="hover:bg-[#A6A5A5]/[.3] p-1" data-rate="1">Normal</li>
-					<li class="hover:bg-[#A6A5A5]/[.3] p-1" data-rate="1.5">1.5</li>
-					<li class="hover:bg-[#A6A5A5]/[.3] p-1" data-rate="2">2</li>
-				</ul>
-			</div>
-			<div class="fixed left-0 top-0 w-full h-full bg-black/[.5] hidden" id="filter_bg"></div>
-			<form id="save_clip_form" class=" hidden bg-black/[.7] text-white w-full md:w-[400px] absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 flex flex-col rounded p-2 gap-3">
-				<span class="absolute right-3 top-2 text-2xl font-bold close_modal cursor-pointer">X</span>
-				<h1 class="text-2xl text-nowrap">Crear Clip</h1>
-				<label>Ponele un título a tu clip
-				<Input id="clip_title" required placeholder="Título" notSvg /></label>
-				<button type="submit" class="flex items-center justify-center cursor-pointer rounded w-[150px] bg-primary p-2 disabled:bg-primary_disabled">
-					<span id="content_btn">Guardar Clip</span>
-					<div class='w-6 h-6 border-4 border-ice border-l-transparent rounded-full animate-spin hidden' id="spinner"></div>
-				</button>
-			</form>
-			<div id="clip_success_modal" class="hidden bg-black/[.7] text-white w-full md:w-[400px] absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 flex flex-col rounded p-2 gap-3">
-				<span class="absolute right-3 top-2 text-2xl font-bold close_modal cursor-pointer">X</span>
-				<h1 class="text-2xl text-nowrap">Clip creado con éxito</h1>
-				<div class="flex items-center flex-col gap-2">
-					<button id="copy_link_button" class="flex items-center justify-center cursor-pointer rounded w-[250px] bg-primary p-2 disabled:bg-primary_disabled">Copiar link</button>
-					<button id="view_clip_button" class="flex items-center justify-center cursor-pointer rounded w-[250px] bg-primary p-2 disabled:bg-primary_disabled">Ver clip</button>
-					<button id="download_button" class="flex items-center justify-center cursor-pointer rounded w-[250px] bg-primary p-2 disabled:bg-primary_disabled">Descargar</button>
-				</div>
-			</div>
-		</div>
-		<style is:global>
-			progress::-webkit-progress-value {
-				background-color:#9F4AA0;
-			}
-			:root {
-				--color-primary: #9F4AA0;
-				--color-secondary: #E3F7FA;
-				--color-white: #fff;
-				--color-terciary: #969696;
-				--color-primary-disabled: #ab98ac;
-			}
-			html {
-				font-family: "Ubuntu", system-ui, sans-serif;
-			}
-			@supports selector(::-webkit-scrollbar) {
-				::-webkit-scrollbar {
-					width: 10px;
-					border-radius: 10px;
-				}
-
-				::-webkit-scrollbar-thumb {
-					border-radius: 10px;
-					background-color: theme("colors.primary");
-					border: 2px solid transparent;
-					background-clip: content-box;
-				}
-
-				::-webkit-scrollbar-thumb:active {
-					background-color: #666;
-				}
-
-				::-webkit-scrollbar-track {
-					background: var(--background-image);
-				}
-
-				::-webkit-scrollbar-corner {
-					background: var(--background-image);
-				}
-			}
-		</style>
-		<script is:inline src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-		<script is:inline define:vars={{ video_url }}>
-			const videoContainer = document.getElementById('videoContainer');
-			const video = document.getElementById('video');
-			const playpause = document.getElementById('playpause');
-			const progress = document.getElementById('progress');
-			const progressBar = document.getElementById('progress-bar');
-			const fullscreen = document.getElementById('fs');
-			const playIcon = document.getElementById('play_icon');
-			const stopIcon = document.getElementById('stop_icon');
-			const maximizeIcon = document.getElementById('maximize_icon');
-			const minimizeIcon = document.getElementById('minimize_icon');
-			const trackPrev = document.getElementById('track_prev')
-			const trackNext = document.getElementById('track_next')
-			const currentTime = document.getElementById('current_time')
-			const durationSpan = document.getElementById('duration')
-			const info = document.getElementById('info')
-			const filterBg = document.getElementById('filter_bg')
-			const infoModal = document.getElementById('info_modal')
-			const closeModal = document.getElementsByClassName('close_modal')
-			const rate = document.getElementById('rate')
-			const rateOptions = document.getElementById('rate_opts')
-			const clipBtn = document.getElementById('clip_btn')
-			const clipState = document.getElementById('clip_state')
-			const clipChronometer = document.getElementById('clip_chronometer')
-			const saveClipForm = document.getElementById('save_clip_form')
-			const clipTitle = document.getElementById('clip_title')
-			const successModal = document.getElementById('clip_success_modal')
-			const contentBtn = document.getElementById('content_btn')
-			const spinner = document.getElementById('spinner')
-			const clipList = document.getElementById('clip_list_btn')
-			const clipListModal = document.getElementById('clip_list_modal')
-			const spinnerVideo = document.getElementById('spinnerVideo')
-			const tooltip = document.getElementById("tooltip")
-			const modalCotainer = document.getElementById("modal_container")
-
-			let modalOpen = false
-			let currentDurationStartClipSeconds = 0
-			let currentDurationStopClipSeconds = 0
-			
-			if (Hls.isSupported()) {
-				video.play()
-				const  hls = new Hls();
-				hls.attachMedia(video);
-				hls.on(Hls.Events.MEDIA_ATTACHED, function () {
-					hls.loadSource(`/api/videos/getVideo/${video_url}`);
-				});
-			}
-			
-			spinnerVideo.classList.remove('hidden')
-
-			video.addEventListener('loadedmetadata', function() {
-				spinnerVideo.classList.add('hidden')
-				video.currentTime = 0
-				progress.setAttribute('max', video.duration);
-				currentTimeDuration()
-
-				video.addEventListener('timeupdate', function() {
-					currentTimeDuration()
-					if (!progress.getAttribute('max')) progress.setAttribute('max', video.duration);
-					progress.value = video.currentTime;
-					progressBar.style.width = Math.floor((video.currentTime / video.duration) * 100) + '%';
-				});
-
-				video.addEventListener('click', ()=>{
-					if (video.paused) video.play();
-					else video.pause();
-				})
-
-				video.addEventListener('play', function() {
-					changeButtonState('playpause');
-				}, false);
-				
-				video.addEventListener('pause', function() {
-					changeButtonState('playpause');
-				}, false);
-
-				video.addEventListener('ended', function(){
-					if(clipBtn.getAttribute('clip-state') !== 'start') stopClip()
-				})
-
-				clipList.addEventListener('click', ()=>{
-					if(!modalCotainer.classList.contains('hidden')){
-						if(!infoModal.classList.contains('hidden')){
-							infoModal.classList.add('hidden')
+				<style is:global>
+						progress::-webkit-progress-value {
+								background-color:#9F4AA0;
 						}
-						if(!rateOptions.classList.contains('hidden')){
-							rateOptions.classList.add('hidden')
+						:root {
+								--color-primary: #9F4AA0;
+								--color-secondary: #E3F7FA;
+								--color-white: #fff;
+								--color-terciary: #969696;
+								--color-primary-disabled: #ab98ac;
 						}
-						if(!clipListModal.classList.contains('hidden')){
-							modalCotainer.classList.toggle('hidden')
-							clipListModal.classList.toggle('hidden')
-						}else{
-							clipListModal.classList.toggle('hidden')
+						html {
+								font-family: "Ubuntu", system-ui, sans-serif;
 						}
-					}
-					else{
-						modalCotainer.classList.toggle('hidden')
-						clipListModal.classList.toggle('hidden')
-					}
-				})
+						@supports selector(::-webkit-scrollbar) {
+								::-webkit-scrollbar {
+										width: 10px;
+										border-radius: 10px;
+								}
 
-				saveClipForm.addEventListener('submit', async function(event){
-					event.preventDefault()
-					const title = clipTitle.value;
-					const clipData = {
-						title,
-						start: currentDurationStartClipSeconds,
-						end: currentDurationStopClipSeconds,
-					};
-					this.disabled = true
-					contentBtn.classList.add('hidden')
-					spinner.classList.remove('hidden')
+								::-webkit-scrollbar-thumb {
+										border-radius: 10px;
+										background-color: theme("colors.primary");
+										border: 2px solid transparent;
+										background-clip: content-box;
+								}
 
-					const res = await fetch(window.location.pathname, {
-						method: 'POST',
-						headers: {
-							'Content-Type': 'application/json'
-						},
-						body: JSON.stringify(clipData)
-					})
-					if(res.ok){
-						const { clipId } =  await res.json()
-						saveClipForm.classList.add('hidden')
-						successModal.classList.remove('hidden')
-						modalOpen = true
+								::-webkit-scrollbar-thumb:active {
+										background-color: #666;
+								}
 
-						const copyLinkButton = document.getElementById('copy_link_button');
-						const viewClipButton = document.getElementById('view_clip_button');
+								::-webkit-scrollbar-track {
+										background: var(--background-image);
+								}
 
-						copyLinkButton.addEventListener('click', async () => {
-							await navigator.clipboard.writeText(`${window.location.origin}/clip/${clipId}`)
+								::-webkit-scrollbar-corner {
+										background: var(--background-image);
+								}
+						}
+				</style>
+				<script is:inline src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+				<script is:inline define:vars={{ video_url }}>
+						const videoContainer = document.getElementById('videoContainer');
+						const video = document.getElementById('video');
+						const playpause = document.getElementById('playpause');
+						const progress = document.getElementById('progress');
+						const progressBar = document.getElementById('progress-bar');
+						const fullscreen = document.getElementById('fs');
+						const playIcon = document.getElementById('play_icon');
+						const stopIcon = document.getElementById('stop_icon');
+						const maximizeIcon = document.getElementById('maximize_icon');
+						const minimizeIcon = document.getElementById('minimize_icon');
+						const trackPrev = document.getElementById('track_prev')
+						const trackNext = document.getElementById('track_next')
+						const currentTime = document.getElementById('current_time')
+						const durationSpan = document.getElementById('duration')
+						const info = document.getElementById('info')
+						const filterBg = document.getElementById('filter_bg')
+						const infoModal = document.getElementById('info_modal')
+						const closeModal = document.getElementsByClassName('close_modal')
+						const rate = document.getElementById('rate')
+						const rateOptions = document.getElementById('rate_opts')
+						const clipBtn = document.getElementById('clip_btn')
+						const clipState = document.getElementById('clip_state')
+						const clipChronometer = document.getElementById('clip_chronometer')
+						const saveClipForm = document.getElementById('save_clip_form')
+						const clipTitle = document.getElementById('clip_title')
+						const successModal = document.getElementById('clip_success_modal')
+						const contentBtn = document.getElementById('content_btn')
+						const spinner = document.getElementById('spinner')
+						const clipList = document.getElementById('clip_list_btn')
+						const clipListModal = document.getElementById('clip_list_modal')
+						const spinnerVideo = document.getElementById('spinnerVideo')
+						const tooltip = document.getElementById("tooltip")
+						const modalCotainer = document.getElementById("modal_container")
+
+						let modalOpen = false
+						let currentDurationStartClipSeconds = 0
+						let currentDurationStopClipSeconds = 0
+						
+						if (Hls.isSupported()) {
+								video.play()
+								const  hls = new Hls();
+								hls.attachMedia(video);
+								hls.on(Hls.Events.MEDIA_ATTACHED, function () {
+										hls.loadSource(`/api/videos/getVideo/${video_url}`);
+								});
+						}
+						
+						spinnerVideo.classList.remove('hidden')
+
+						video.addEventListener('loadedmetadata', function() {
+								spinnerVideo.classList.add('hidden')
+								video.currentTime = 0
+								progress.setAttribute('max', video.duration);
+								currentTimeDuration()
+
+								video.addEventListener('timeupdate', function() {
+										currentTimeDuration()
+										if (!progress.getAttribute('max')) progress.setAttribute('max', video.duration);
+										progress.value = video.currentTime;
+										progressBar.style.width = Math.floor((video.currentTime / video.duration) * 100) + '%';
+								});
+
+								video.addEventListener('click', ()=>{
+										if (video.paused) video.play();
+										else video.pause();
+								})
+
+								video.addEventListener('play', function() {
+										changeButtonState('playpause');
+								}, false);
+								
+								video.addEventListener('pause', function() {
+										changeButtonState('playpause');
+								}, false);
+
+								video.addEventListener('ended', function(){
+										if(clipBtn.getAttribute('clip-state') !== 'start') stopClip()
+								})
+
+								clipList.addEventListener('click', ()=>{
+										if(!modalCotainer.classList.contains('hidden')){
+												if(!infoModal.classList.contains('hidden')){
+														infoModal.classList.add('hidden')
+												}
+												if(!rateOptions.classList.contains('hidden')){
+														rateOptions.classList.add('hidden')
+												}
+												if(!clipListModal.classList.contains('hidden')){
+														modalCotainer.classList.toggle('hidden')
+														clipListModal.classList.toggle('hidden')
+												}else{
+														clipListModal.classList.toggle('hidden')
+												}
+										}
+										else{
+												modalCotainer.classList.toggle('hidden')
+												clipListModal.classList.toggle('hidden')
+										}
+								})
+
+								saveClipForm.addEventListener('submit', async function(event){
+										event.preventDefault()
+										const title = clipTitle.value;
+										const clipData = {
+												title,
+												start: currentDurationStartClipSeconds,
+												end: currentDurationStopClipSeconds,
+										};
+										this.disabled = true
+										contentBtn.classList.add('hidden')
+										spinner.classList.remove('hidden')
+
+										const res = await fetch(window.location.pathname, {
+												method: 'POST',
+												headers: {
+														'Content-Type': 'application/json'
+												},
+												body: JSON.stringify(clipData)
+										})
+										if(res.ok){
+												const { clipId } =  await res.json()
+												saveClipForm.classList.add('hidden')
+												successModal.classList.remove('hidden')
+												modalOpen = true
+
+												const copyLinkButton = document.getElementById('copy_link_button');
+												const viewClipButton = document.getElementById('view_clip_button');
+
+												copyLinkButton.addEventListener('click', async () => {
+														await navigator.clipboard.writeText(`${window.location.origin}/clip/${clipId}`)
+												});
+
+												viewClipButton.addEventListener('click', () => {
+														window.open(`/clip/${clipId}`, '_blank');
+												});
+										}
+										this.disabled = false
+										contentBtn.classList.remove('hidden')
+										spinner.classList.add('hidden')
+										clipTitle.value = ''
+								})
+
+								clipBtn.addEventListener('click', function(){
+										if(this.getAttribute('clip-state') === 'start') startClip()
+										else stopClip()
+								})
+
+								function startClip(){
+										trackPrev.disabled = true
+										trackNext.disabled = true
+										playpause.disabled = true
+										info.disabled = true
+										clipList.disabled = true
+										rate.disabled = true
+										progress.style.pointerEvents = 'none'
+										video.style.pointerEvents = 'none'
+										clipBtn.setAttribute('clip-state', 'stop')
+										clipState.classList.remove('bg-white')
+										clipState.classList.add('bg-red-700')
+										clipChronometer.classList.remove('hidden')
+										clipChronometer.textContent = '00:00';
+										currentDurationStartClipSeconds = video.currentTime
+										startChronometer();
+										video.play();
+										changeButtonState('playpause');
+								}
+
+								function stopClip(){
+										trackPrev.disabled = false
+										trackNext.disabled = false
+										playpause.disabled = false
+										info.disabled = false
+										clipList.disabled = false
+										rate.disabled = false
+										progress.style.pointerEvents = 'auto'
+										video.style.pointerEvents = 'auto'
+										clipBtn.setAttribute('clip-state', 'start')
+										clipState.classList.remove('bg-red-700')
+										clipState.classList.add('bg-white')
+										clipChronometer.classList.add('hidden')
+										currentDurationStopClipSeconds = video.currentTime
+										stopChronometer();
+										video.pause()
+										clipTitle.value = ''
+										filterBg.classList.remove('hidden')
+										saveClipForm.classList.remove('hidden')
+										modalOpen = true
+								}
+
+								rate.addEventListener('click', ()=>{
+										if(!modalCotainer.classList.contains('hidden')){
+												if(!clipListModal.classList.contains('hidden')){
+														clipListModal.classList.add('hidden')
+												}
+												if(!infoModal.classList.contains('hidden')){
+														infoModal.classList.add('hidden')
+												}
+												if(!rateOptions.classList.contains('hidden')){
+														modalCotainer.classList.toggle('hidden')
+														rateOptions.classList.toggle('hidden')
+												}else{
+														rateOptions.classList.toggle('hidden')
+												}
+										}
+										else{
+												modalCotainer.classList.toggle('hidden')
+												rateOptions.classList.toggle('hidden')
+										}
+								})
+
+								const options = rateOptions.querySelectorAll('li');
+								options.forEach(option => {
+										option.addEventListener('click', (event) => {
+												const rateSelected = event.target.getAttribute('data-rate');
+												video.playbackRate = rateSelected;
+												rate.innerText = `x${rateSelected}`;
+												rateOptions.classList.add('hidden');
+												modalCotainer.classList.toggle('hidden')
+										});
+								});
+
+								filterBg.addEventListener('click',()=>{
+										filterBg.classList.add('hidden')
+										if(!saveClipForm.classList.contains('hidden'))
+												saveClipForm.classList.add('hidden')
+										if(!successModal.classList.contains('hidden'))
+												successModal.classList.add('hidden')
+										modalOpen = false
+								})
+
+								for (let i = 0; i < closeModal.length; i++) {
+										closeModal[i].addEventListener('click', function(){
+												this.parentNode.classList.add('hidden')
+												filterBg.classList.add('hidden')
+												modalOpen = false
+										})
+								}
+
+								info.addEventListener('click', ()=>{
+										if(!modalCotainer.classList.contains('hidden')){
+												if(!clipListModal.classList.contains('hidden')){
+														clipListModal.classList.add('hidden')
+												}
+												if(!rateOptions.classList.contains('hidden')){
+														rateOptions.classList.add('hidden')
+												}
+												if(!infoModal.classList.contains('hidden')){
+														modalCotainer.classList.toggle('hidden')
+														infoModal.classList.toggle('hidden')
+														modalOpen = false
+												}else{
+														infoModal.classList.toggle('hidden')
+														modalOpen = true
+												}
+										}
+										else{
+												modalCotainer.classList.toggle('hidden')
+												infoModal.classList.toggle('hidden')
+												modalOpen = true
+										}
+								})
+
+								trackNext.addEventListener('click', ()=>{
+										video.currentTime += 10;
+								})
+
+								trackPrev.addEventListener('click', ()=>{
+										video.currentTime -= 10;
+								})
+
+								playpause.addEventListener('click', ()=>{
+										if (video.paused || video.ended) video.play();
+										else video.pause();
+								})
+
+								progress.addEventListener('click', function(e) {
+										const pos = (e.pageX  - (this.offsetLeft + this.offsetParent.offsetLeft + this.offsetParent.offsetParent.offsetLeft)) / this.offsetWidth;
+										video.currentTime = pos * video.duration;
+								});
+
+								progress.addEventListener('mouseover', function (e) {
+										tooltip.classList.remove('hidden')
+								});
+
+								progress.addEventListener('mouseout', function (e) {
+										tooltip.classList.add('hidden');
+								});
+
+								progress.addEventListener('mousemove', function (e) {
+										const pos = (e.pageX - (this.offsetLeft + this.offsetParent.offsetLeft + this.offsetParent.offsetParent.offsetLeft)) / this.offsetWidth;
+										const duration = pos * video.duration;
+										const hours = Math.floor(duration / 3600);
+										const minutes = Math.floor((duration % 3600) / 60);
+										const seconds = Math.floor(duration % 60);
+										const timeString = `${hours > 0 ? hours + ':' : ''}${hours > 0 && minutes < 10 ? '0' : ''}${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+										tooltip.textContent = timeString;
+										tooltip.style.left = `${e.pageX-10}px`;
+								});
+
+								fullscreen.addEventListener('click', ()=>{
+										if(fullscreen.getAttribute("data-state") === 'maximize'){
+												fullscreen.setAttribute("data-state", 'minimize')
+												minimizeIcon.classList.remove('hidden')
+												maximizeIcon.classList.add('hidden')
+												videoContainer.requestFullscreen();
+										}else{
+												fullscreen.setAttribute("data-state", 'maximize')
+												document.exitFullscreen();
+												minimizeIcon.classList.add('hidden')
+												maximizeIcon.classList.remove('hidden')
+										}
+								})
+
+								document.addEventListener('keydown', function(event) {
+										if (event.code === 'ArrowRight' && !modalOpen) video.currentTime += 10;
+										if (event.code === 'ArrowLeft' && !modalOpen) video.currentTime -= 10;
+										if (event.code === 'Space' && !modalOpen) {
+												event.stopPropagation();
+												event.preventDefault();
+												if (video.paused || video.ended) video.play()
+												else video.pause()
+										}
+										if (event.code === 'Enter' && !modalOpen) {
+												if(clipBtn.getAttribute('clip-state') === 'start') startClip()
+												else stopClip()
+										}
+										if (event.code === 'KeyF' && !modalOpen) changeButtonState('maximizeminimize')
+										if (event.code === 'Escape' && modalOpen){
+												filterBg.classList.add('hidden')
+												if(!saveClipForm.classList.contains('hidden'))
+														saveClipForm.classList.add('hidden')
+												if(!successModal.classList.contains('hidden'))
+														successModal.classList.add('hidden')
+												modalOpen = false
+										}
+								});
+
+								function changeButtonState(type) {
+										if (type == 'playpause') {
+												if (video.paused || video.ended) {
+														playpause.setAttribute('data-state', 'play');
+														stopIcon.classList.add('hidden')
+														playIcon.classList.remove('hidden')
+												}
+												else {
+														playpause.setAttribute('data-state', 'pause');
+														stopIcon.classList.remove('hidden')
+														playIcon.classList.add('hidden')
+												}
+										}
+										else if (type == 'maximizeminimize') {
+												if(fullscreen.getAttribute("data-state") === 'maximize'){
+														fullscreen.setAttribute("data-state", 'minimize')
+														minimizeIcon.classList.remove('hidden')
+														maximizeIcon.classList.add('hidden')
+														videoContainer.requestFullscreen();
+												}else{
+														fullscreen.setAttribute("data-state", 'maximize')
+														minimizeIcon.classList.add('hidden')
+														maximizeIcon.classList.remove('hidden')
+														document.exitFullscreen();
+												}
+										}
+								}
+
+								function currentTimeDuration(){
+										const currTime = Math.round(video.currentTime);
+										const duration = Math.round(video.duration);
+										
+										const currentTimeStr = formatTime(currTime);
+										const durationStr = formatTime(duration);
+
+										currentTime.innerText = currentTimeStr;
+										if(durationSpan)
+												durationSpan.innerText = durationStr;
+								}
+
+								function formatTime(time) {
+										let hours = Math.floor(time / 3600);
+										let minutes = Math.floor((time % 3600) / 60);
+										let seconds = time % 60;
+
+										if (hours > 0) {
+												return `${hours}:${(minutes < 10 ? '0' : '') + minutes}:${(seconds < 10 ? '0' : '') + seconds}`;
+										} else {
+												return `${minutes}:${(seconds < 10 ? '0' : '') + seconds}`;
+										}
+								}
+
+								let intervalId;
+								let startTime;
+
+								function startChronometer() {
+										startTime = Date.now();
+										intervalId = setInterval(() => {
+												const elapsed = Date.now() - startTime;
+												const minutes = Math.floor(elapsed / 60000);
+												const seconds = Math.floor((elapsed % 60000) / 1000);
+												clipChronometer.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+												if (elapsed >= 60000) {
+														clearInterval(intervalId);
+														stopClip()
+												}
+										}, 1000);
+								}
+
+								function stopChronometer() {
+										clearInterval(intervalId);
+								}
 						});
 
-						viewClipButton.addEventListener('click', () => {
-							window.open(`/clip/${clipId}`, '_blank');
-						});
-					}
-					this.disabled = false
-					contentBtn.classList.remove('hidden')
-					spinner.classList.add('hidden')
-					clipTitle.value = ''
-				})
-
-				clipBtn.addEventListener('click', function(){
-					if(this.getAttribute('clip-state') === 'start') startClip()
-					else stopClip()
-				})
-
-				function startClip(){
-					trackPrev.disabled = true
-					trackNext.disabled = true
-					playpause.disabled = true
-					info.disabled = true
-					clipList.disabled = true
-					rate.disabled = true
-					progress.style.pointerEvents = 'none'
-					video.style.pointerEvents = 'none'
-					clipBtn.setAttribute('clip-state', 'stop')
-					clipState.classList.remove('bg-white')
-					clipState.classList.add('bg-red-700')
-					clipChronometer.classList.remove('hidden')
-					clipChronometer.textContent = '00:00';
-					currentDurationStartClipSeconds = video.currentTime
-					startChronometer();
-					video.play();
-					changeButtonState('playpause');
-				}
-
-				function stopClip(){
-					trackPrev.disabled = false
-					trackNext.disabled = false
-					playpause.disabled = false
-					info.disabled = false
-					clipList.disabled = false
-					rate.disabled = false
-					progress.style.pointerEvents = 'auto'
-					video.style.pointerEvents = 'auto'
-					clipBtn.setAttribute('clip-state', 'start')
-					clipState.classList.remove('bg-red-700')
-					clipState.classList.add('bg-white')
-					clipChronometer.classList.add('hidden')
-					currentDurationStopClipSeconds = video.currentTime
-					stopChronometer();
-					video.pause()
-					clipTitle.value = ''
-					filterBg.classList.remove('hidden')
-					saveClipForm.classList.remove('hidden')
-					modalOpen = true
-				}
-
-				rate.addEventListener('click', ()=>{
-					if(!modalCotainer.classList.contains('hidden')){
-						if(!clipListModal.classList.contains('hidden')){
-							clipListModal.classList.add('hidden')
-						}
-						if(!infoModal.classList.contains('hidden')){
-							infoModal.classList.add('hidden')
-						}
-						if(!rateOptions.classList.contains('hidden')){
-							modalCotainer.classList.toggle('hidden')
-							rateOptions.classList.toggle('hidden')
-						}else{
-							rateOptions.classList.toggle('hidden')
-						}
-					}
-					else{
-						modalCotainer.classList.toggle('hidden')
-						rateOptions.classList.toggle('hidden')
-					}
-				})
-
-				const options = rateOptions.querySelectorAll('li');
-				options.forEach(option => {
-					option.addEventListener('click', (event) => {
-						const rateSelected = event.target.getAttribute('data-rate');
-						video.playbackRate = rateSelected;
-						rate.innerText = `x${rateSelected}`;
-						rateOptions.classList.add('hidden');
-						modalCotainer.classList.toggle('hidden')
-					});
-				});
-
-				filterBg.addEventListener('click',()=>{
-					filterBg.classList.add('hidden')
-					if(!saveClipForm.classList.contains('hidden'))
-						saveClipForm.classList.add('hidden')
-					if(!successModal.classList.contains('hidden'))
-						successModal.classList.add('hidden')
-					modalOpen = false
-				})
-
-				for (let i = 0; i < closeModal.length; i++) {
-					closeModal[i].addEventListener('click', function(){
-						this.parentNode.classList.add('hidden')
-						filterBg.classList.add('hidden')
-						modalOpen = false
-					})
-				}
-
-				info.addEventListener('click', ()=>{
-					if(!modalCotainer.classList.contains('hidden')){
-						if(!clipListModal.classList.contains('hidden')){
-							clipListModal.classList.add('hidden')
-						}
-						if(!rateOptions.classList.contains('hidden')){
-							rateOptions.classList.add('hidden')
-						}
-						if(!infoModal.classList.contains('hidden')){
-							modalCotainer.classList.toggle('hidden')
-							infoModal.classList.toggle('hidden')
-							modalOpen = false
-						}else{
-							infoModal.classList.toggle('hidden')
-							modalOpen = true
-						}
-					}
-					else{
-						modalCotainer.classList.toggle('hidden')
-						infoModal.classList.toggle('hidden')
-						modalOpen = true
-					}
-				})
-
-				trackNext.addEventListener('click', ()=>{
-					video.currentTime += 10;
-				})
-
-				trackPrev.addEventListener('click', ()=>{
-					video.currentTime -= 10;
-				})
-
-				playpause.addEventListener('click', ()=>{
-					if (video.paused || video.ended) video.play();
-					else video.pause();
-				})
-
-				progress.addEventListener('click', function(e) {
-					const pos = (e.pageX  - (this.offsetLeft + this.offsetParent.offsetLeft + this.offsetParent.offsetParent.offsetLeft)) / this.offsetWidth;
-					video.currentTime = pos * video.duration;
-				});
-
-				progress.addEventListener('mouseover', function (e) {
-					tooltip.classList.remove('hidden')
-				});
-
-				progress.addEventListener('mouseout', function (e) {
-					tooltip.classList.add('hidden');
-				});
-
-				progress.addEventListener('mousemove', function (e) {
-					const pos = (e.pageX - (this.offsetLeft + this.offsetParent.offsetLeft + this.offsetParent.offsetParent.offsetLeft)) / this.offsetWidth;
-					const duration = pos * video.duration;
-					const hours = Math.floor(duration / 3600);
-					const minutes = Math.floor((duration % 3600) / 60);
-					const seconds = Math.floor(duration % 60);
-					const timeString = `${hours > 0 ? hours + ':' : ''}${hours > 0 && minutes < 10 ? '0' : ''}${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-					tooltip.textContent = timeString;
-					tooltip.style.left = `${e.pageX-10}px`;
-				});
-
-				fullscreen.addEventListener('click', ()=>{
-					if(fullscreen.getAttribute("data-state") === 'maximize'){
-						fullscreen.setAttribute("data-state", 'minimize')
-						minimizeIcon.classList.remove('hidden')
-						maximizeIcon.classList.add('hidden')
-						videoContainer.requestFullscreen();
-					}else{
-						fullscreen.setAttribute("data-state", 'maximize')
-						document.exitFullscreen();
-						minimizeIcon.classList.add('hidden')
-						maximizeIcon.classList.remove('hidden')
-					}
-				})
-
-				document.addEventListener('keydown', function(event) {
-					if (event.code === 'ArrowRight' && !modalOpen) video.currentTime += 10;
-					if (event.code === 'ArrowLeft' && !modalOpen) video.currentTime -= 10;
-					if (event.code === 'Space' && !modalOpen) {
-						event.stopPropagation();
-            			event.preventDefault();
-						if (video.paused || video.ended) video.play()
-						else video.pause()
-					}
-					if (event.code === 'Enter' && !modalOpen) {
-						if(clipBtn.getAttribute('clip-state') === 'start') startClip()
-						else stopClip()
-					}
-					if (event.code === 'KeyF' && !modalOpen) changeButtonState('maximizeminimize')
-					if (event.code === 'Escape' && modalOpen){
-						filterBg.classList.add('hidden')
-						if(!saveClipForm.classList.contains('hidden'))
-							saveClipForm.classList.add('hidden')
-						if(!successModal.classList.contains('hidden'))
-							successModal.classList.add('hidden')
-						modalOpen = false
-					}
-				});
-
-				function changeButtonState(type) {
-					if (type == 'playpause') {
-						if (video.paused || video.ended) {
-							playpause.setAttribute('data-state', 'play');
-							stopIcon.classList.add('hidden')
-							playIcon.classList.remove('hidden')
-						}
-						else {
-							playpause.setAttribute('data-state', 'pause');
-							stopIcon.classList.remove('hidden')
-							playIcon.classList.add('hidden')
-						}
-					}
-					else if (type == 'maximizeminimize') {
-						if(fullscreen.getAttribute("data-state") === 'maximize'){
-							fullscreen.setAttribute("data-state", 'minimize')
-							minimizeIcon.classList.remove('hidden')
-							maximizeIcon.classList.add('hidden')
-							videoContainer.requestFullscreen();
-						}else{
-							fullscreen.setAttribute("data-state", 'maximize')
-							minimizeIcon.classList.add('hidden')
-							maximizeIcon.classList.remove('hidden')
-							document.exitFullscreen();
-						}
-					}
-				}
-
-				function currentTimeDuration(){
-					const currTime = Math.round(video.currentTime);
-					const duration = Math.round(video.duration);
-					
-					const currentTimeStr = formatTime(currTime);
-					const durationStr = formatTime(duration);
-
-					currentTime.innerText = currentTimeStr;
-					if(durationSpan)
-						durationSpan.innerText = durationStr;
-				}
-
-				function formatTime(time) {
-					let hours = Math.floor(time / 3600);
-					let minutes = Math.floor((time % 3600) / 60);
-					let seconds = time % 60;
-
-					if (hours > 0) {
-						return `${hours}:${(minutes < 10 ? '0' : '') + minutes}:${(seconds < 10 ? '0' : '') + seconds}`;
-					} else {
-						return `${minutes}:${(seconds < 10 ? '0' : '') + seconds}`;
-					}
-				}
-
-				let intervalId;
-				let startTime;
-
-				function startChronometer() {
-					startTime = Date.now();
-					intervalId = setInterval(() => {
-						const elapsed = Date.now() - startTime;
-						const minutes = Math.floor(elapsed / 60000);
-						const seconds = Math.floor((elapsed % 60000) / 1000);
-						clipChronometer.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-
-						if (elapsed >= 60000) {
-							clearInterval(intervalId);
-							stopClip()
-						}
-					}, 1000);
-				}
-
-				function stopChronometer() {
-					clearInterval(intervalId);
-				}
-			});
-
-			
-		</script>
-	</body>
+						
+				</script>
+		</body>
 </html>
 

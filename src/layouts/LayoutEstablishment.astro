@@ -1,5 +1,4 @@
 ---
-import { ViewTransitions } from "astro:transitions";
 import Navbar from "../components/Navbar.astro"
 
 const { title, width, height } = Astro.props;
@@ -14,7 +13,6 @@ const { title, width, height } = Astro.props;
 		<link rel="icon" type="image/svg+xml" href="favicon.svg" />
 		<meta name="generator" content={Astro.generator} />
 		<title>{title}</title>
-		<ViewTransitions />
 	</head>
 	<body class="overflow-hidden relative" >
 		<div class="h-screen md:flex md:items-center md:justify-center md:p-20">

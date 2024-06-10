@@ -51,10 +51,10 @@ if(Astro.request.method === 'POST'){
             <strong class="text-5xl text-primary font-medium">Contáctanos</strong>
             <form method="POST" class="flex flex-col items-center gap-5 mt-5">
                 <div class="flex justify-between gap-10 w-full">
-                    <Input placeholder="Nombre" name="name" type="text" required>
+                    <Input placeholder="Nombre" name="name" type="text" notSvg={false} required>
                         <Name />
                     </Input>
-                    <Input placeholder="Email" name="email" type="email" required>
+                    <Input placeholder="Email" name="email" type="email" notSvg={false} required>
                         <Email />
                     </Input>
                 </div>

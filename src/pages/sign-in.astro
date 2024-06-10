@@ -55,10 +55,10 @@ if(Astro.request.method === 'POST'){
 	<section class="bg-white md:px-32 h-full md:rounded-l-xl md:rounded-br-none flex flex-col gap-5 items-center justify-center px-20 md:py-20">
 		<strong class="text-5xl text-primary font-medium text-nowrap">Iniciar sesión</strong>
 		<form method="POST" class="flex flex-col gap-4" id="loginForm">
-			<Input placeholder="Usuario" name="email" required notSvg="false" notSvg={false} type="email">
+			<Input placeholder="Usuario" name="email" required notSvg={false} type="email">
 				<Email />
 			</Input>
-			<Input placeholder="Contraseña" name='password' required type="password" notSvg="false" notSvg={false} minlength="5">
+			<Input placeholder="Contraseña" name='password' required type="password" notSvg={false} minlength="5">
 				<Password />
 			</Input>
 			{error && <span class="text-center text-red-500 text-sm" id="errorSpan">{error}</span>}
@@ -75,18 +75,15 @@ if(Astro.request.method === 'POST'){
 		<p class="m-0 font-light text-l w-3/4">Servicio de grabación en establecimientos deportivos</p>
 		<a class="rounded-2xl border p-3" href="/">BUSCAR VIDEO</a>
 	</section>
-	<script is:inline>
-		document.addEventListener('astro:page-load',()=>{
-			const form = document.getElementById('loginForm')
-			const loginBtn = document.getElementById('login_btn')
-			const contentBtn = document.getElementById('content_btn')
-			const spinner = document.getElementById('spinner')
-			form.addEventListener('submit', () =>{
-				loginBtn.disabled = true
-				contentBtn.style.display = 'none'
-				spinner.classList.remove('hidden')
-			})
-		}, { once: false })
-		
+	<script>
+		const form = document.getElementById('loginForm')
+		const loginBtn = document.getElementById('login_btn')
+		const contentBtn = document.getElementById('content_btn')
+		const spinner = document.getElementById('spinner')
+		form.addEventListener('submit', () =>{
+			loginBtn.disabled = true
+			contentBtn.style.display = 'none'
+			spinner.classList.remove('hidden')
+		})
 	</script>
 </Layout>

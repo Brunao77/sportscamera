@@ -136,67 +136,65 @@ if(Astro.request.method === 'POST'){
 		{error && <span class="text-red-400">{error}</span>}
 	</section>
 	{success && <Success message={success} redirect="/add" />}
-	<script is:inline>
-		document.addEventListener('astro:page-load', ()=>{
-			const form = document.getElementById('form')
-			const saveBtn = document.getElementById('save_btn')
-			const contentBtn = document.getElementById('content_btn')
-			const spinner = document.getElementById('spinner')
-			const addCameraBtn = document.getElementById("add_camera_btn")
-			const removeCameraBtn = document.getElementById("remove_camera_btn")
-			const camerasContainer = document.getElementById('cameras_container')
+	<script>
+		const form = document.getElementById('form')
+		const saveBtn = document.getElementById('save_btn')
+		const contentBtn = document.getElementById('content_btn')
+		const spinner = document.getElementById('spinner')
+		const addCameraBtn = document.getElementById("add_camera_btn")
+		const removeCameraBtn = document.getElementById("remove_camera_btn")
+		const camerasContainer = document.getElementById('cameras_container')
 
-			class AddCamera extends HTMLElement {
-				constructor(index) {
-					super();
-					this.innerHTML = `
-					<hr class="md:hidden">
-					<div class="flex flex-wrap mb-2 justify-between">
-						<label>
-							Nombre cancha
-							<input placeholder="Cancha" name="cameras[${index}][field_name]" type="text" required class="bg-white w-full border-primary border-2 outline-0 px-4 py-1 md:py-3 text-black rounded-xl placeholder-terciary disabled:border-primary_disabled"></input>
-						</label>
-						<label>
-							Rtsp principal
-							<input placeholder="Rtsp principal" name="cameras[${index}][rtsp]" type="text" required class="bg-white w-full border-primary border-2 outline-0 px-4 py-1 md:py-3 text-black rounded-xl placeholder-terciary disabled:border-primary_disabled"></input>
-						</label>
-						<label>
-							Rtsp secundario
-							<input placeholder="Rtsp secundario" name="cameras[${index}][rtsp_low]" type="text" required class="bg-white w-full border-primary border-2 outline-0 px-4 py-1 md:py-3 text-black rounded-xl placeholder-terciary disabled:border-primary_disabled"></input>
-						</label>
-					</div>
-					`;
-				}
+		class AddCamera extends HTMLElement {
+			constructor(index) {
+				super();
+				this.innerHTML = `
+				<hr class="md:hidden">
+				<div class="flex flex-wrap mb-2 justify-between">
+					<label>
+						Nombre cancha
+						<input placeholder="Cancha" name="cameras[${index}][field_name]" type="text" required class="bg-white w-full border-primary border-2 outline-0 px-4 py-1 md:py-3 text-black rounded-xl placeholder-terciary disabled:border-primary_disabled"></input>
+					</label>
+					<label>
+						Rtsp principal
+						<input placeholder="Rtsp principal" name="cameras[${index}][rtsp]" type="text" required class="bg-white w-full border-primary border-2 outline-0 px-4 py-1 md:py-3 text-black rounded-xl placeholder-terciary disabled:border-primary_disabled"></input>
+					</label>
+					<label>
+						Rtsp secundario
+						<input placeholder="Rtsp secundario" name="cameras[${index}][rtsp_low]" type="text" required class="bg-white w-full border-primary border-2 outline-0 px-4 py-1 md:py-3 text-black rounded-xl placeholder-terciary disabled:border-primary_disabled"></input>
+					</label>
+				</div>
+				`;
 			}
+		}
 
-			customElements.define('add-camera-container', AddCamera);
+		customElements.define('add-camera-container', AddCamera);
 
-			let cameraIndex = 0;
+		let cameraIndex = 0;
 
+		const addCamera = new AddCamera(cameraIndex);
+		camerasContainer.insertBefore(addCamera, removeCameraBtn);
+
+		addCameraBtn.addEventListener('click', function() {
+			cameraIndex++
 			const addCamera = new AddCamera(cameraIndex);
 			camerasContainer.insertBefore(addCamera, removeCameraBtn);
+			removeCameraBtn.classList.remove('hidden')
+		})
 
-			addCameraBtn.addEventListener('click', function() {
-				cameraIndex++
-				const addCamera = new AddCamera(cameraIndex);
-				camerasContainer.insertBefore(addCamera, removeCameraBtn);
-				removeCameraBtn.classList.remove('hidden')
-			})
-
-			removeCameraBtn.addEventListener('click', function() {
-				const lastCamera = camerasContainer.querySelectorAll('add-camera-container');
-				if (lastCamera.length > 0) {
-					lastCamera[lastCamera.length - 1].remove();
-					cameraIndex--;
-					if (lastCamera.length === 2) removeCameraBtn.classList.add('hidden');
-				}
-			})
-			
-			form.addEventListener('submit', () =>{
-				saveBtn.disabled = true
-				contentBtn.style.display = 'none'
-				spinner.classList.remove('hidden')
-			})
-		}, { once: false })
+		removeCameraBtn.addEventListener('click', function() {
+			const lastCamera = camerasContainer.querySelectorAll('add-camera-container');
+			if (lastCamera.length > 0) {
+				lastCamera[lastCamera.length - 1].remove();
+				cameraIndex--;
+				if (lastCamera.length === 2) removeCameraBtn.classList.add('hidden');
+			}
+		})
+		
+		form.addEventListener('submit', () =>{
+			saveBtn.disabled = true
+			contentBtn.style.display = 'none'
+			spinner.classList.remove('hidden')
+		})
 	</script>
 </LayoutEstablishment>

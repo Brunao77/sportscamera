@@ -117,18 +117,16 @@ if(Astro.request.method === 'POST'){
             </div>
         </form>
 	</section>
-    <script is:inline>
-        document.addEventListener('astro:page-load', ()=>{
-            const form = document.getElementById('form')
-            const saveBtn = document.getElementById('save_btn')
-			const contentBtn = document.getElementById('content_btn')
-			const spinner = document.getElementById('spinner')
+    <script>
+        const form = document.getElementById('form')
+        const saveBtn = document.getElementById('save_btn')
+		const contentBtn = document.getElementById('content_btn')
+		const spinner = document.getElementById('spinner')
 
-            form.addEventListener('submit', ()=>{
-                saveBtn.disabled = true
-                contentBtn.style.display = "none"
-                spinner.classList.remove('hidden')
-            })
-        }, { once: false })
+        form.addEventListener('submit', ()=>{
+            saveBtn.disabled = true
+            contentBtn.style.display = "none"
+            spinner.classList.remove('hidden')
+        })
     </script>
 </LayoutEstablishment>

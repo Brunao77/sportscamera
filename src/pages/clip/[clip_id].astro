@@ -18,7 +18,7 @@ const clip = await ClipsModel.getById({ clip_id: parseInt(clip_id, 10) })
 if(!clip)
     return Astro.redirect("/");
 
-const { title, date, clip_url, key } = clip
+const { title, date, clip_url, key, clip_duration, clip_offset } = clip
 
 const newDate = new Date(date);
 const formatedDate = newDate.toISOString().split('T')[0];
@@ -36,9 +36,9 @@ const formatedDate = newDate.toISOString().split('T')[0];
 	</head>
 	<body class="overflow-hidden h-full">
         <div id="videoContainer" class="relative h-full bg-black" data-fullscreen="false">
-            <div class='absolute top-1/2 left-1/2 w-20 h-20 border-4 border-white border-l-transparent rounded-full animate-spin hidden' id="spinnerVideo"></div>
+            <div class='absolute top-1/2 left-1/2 w-20 h-20 border-4 border-white border-l-transparent rounded-full animate-spin' id="spinnerVideo"></div>
             <video id="video" class="object-cover w-full" preload="metadata"></video>
-            <div id="video-controls" class="absolute bottom-0 w-full flex flex-col px-3 py-1 gap-1 text-white" data-state="hidden">
+            <div id="video-controls" class="absolute bottom-0 w-full flex flex-col px-3 py-1 gap-1 text-white">
 				<progress id="progress" class="w-full overflow-hidden h-[7px] rounded-lg color-primary cursor-pointer hover:h-[10px]" min="0" value="0"><span id="progress-bar"></span></progress>
 				<span id="tooltip" class="absolute text-white top-[-50%]"></span>
 				<div class="flex justify-between items-end md:items-center px-2">
@@ -65,7 +65,7 @@ const formatedDate = newDate.toISOString().split('T')[0];
 				<li class="hover:bg-[#A6A5A5]/[.3] p-1" data-rate="2">2</li>
 			</ul>
 		</div>
-        <div class="absolute top-2 left-2 text-white flex gap-2 items-end">
+        <div id="clip-metadata" class="absolute top-2 left-2 text-white flex gap-2 items-end">
             <span class="text-primary text-lg md:text-2xl font-medium truncate max-w-[100px] md:max-w-[600px]" title={title}>{title}</span>
             <span>{formatedDate}</span>
         </div>
@@ -92,9 +92,13 @@ const formatedDate = newDate.toISOString().split('T')[0];
 			}
         </style>
         <script is:inline src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-        <script is:inline define:vars={{key}}>
-            const video = document.getElementById('video')
+        <script is:inline define:vars={{key, clip_duration, clip_offset}}>
+            const clipDuration = parseFloat(clip_duration)
+            const clipOffset = parseFloat(clip_offset)
+            const video = document.getElementById('video');
             const videoContainer = document.getElementById('videoContainer');
+            const videoControls = document.getElementById('video-controls');
+            const clipMetadata = document.getElementById('clip-metadata');
             const playpause = document.getElementById('playpause');
             const progress = document.getElementById('progress');
             const progressBar = document.getElementById('progress-bar');
@@ -103,44 +107,45 @@ const formatedDate = newDate.toISOString().split('T')[0];
             const stopIcon = document.getElementById('stop_icon');
             const maximizeIcon = document.getElementById('maximize_icon');
             const minimizeIcon = document.getElementById('minimize_icon');
-            const trackPrev = document.getElementById('track_prev')
-            const trackNext = document.getElementById('track_next')
-            const currentTime = document.getElementById('current_time')
-            const durationSpan = document.getElementById('duration')
-            const rate = document.getElementById('rate')
-            const rateOptions = document.getElementById('rate_opts')
-            const spinnerVideo = document.getElementById('spinnerVideo')
-            const tooltip = document.getElementById("tooltip")
-            const modalCotainer = document.getElementById("modal_container")
-
+            const trackPrev = document.getElementById('track_prev');
+            const trackNext = document.getElementById('track_next');
+            const currentTime = document.getElementById('current_time');
+            const durationSpan = document.getElementById('duration');
+            const rate = document.getElementById('rate');
+            const rateOptions = document.getElementById('rate_opts');
+            const spinnerVideo = document.getElementById('spinnerVideo');
+            const tooltip = document.getElementById('tooltip');
+            const modalCotainer = document.getElementById('modal_container');
+            let reachedEnd = false;
+            let mouseTimeout;
+        
             if (Hls.isSupported()) {
-                video.play()
-                const  hls = new Hls();
+                video.play();
+                const hls = new Hls();
                 hls.attachMedia(video);
                 hls.on(Hls.Events.MEDIA_ATTACHED, function () {
                     hls.loadSource(`/api/videos/getVideo/${key}`);
                 });
             }
-
+        
             video.addEventListener('loadedmetadata', function() {
-                spinnerVideo.classList.add('hidden')
-				video.currentTime = 0
-				progress.setAttribute('max', video.duration);
-				currentTimeDuration()
-                
+                spinnerVideo.classList.add('hidden');
+                video.currentTime = clipOffset;
+                progress.setAttribute('max', clipDuration);
+                currentTimeDuration();
+        
                 rate.addEventListener('click', ()=>{
                     if(!modalCotainer.classList.contains('hidden')){
                         if(!rateOptions.classList.contains('hidden')){
-                            modalCotainer.classList.toggle('hidden')
-                            rateOptions.classList.toggle('hidden')
-                        }else rateOptions.classList.toggle('hidden')
+                            modalCotainer.classList.toggle('hidden');
+                            rateOptions.classList.toggle('hidden');
+                        } else rateOptions.classList.toggle('hidden');
+                    } else {
+                        modalCotainer.classList.toggle('hidden');
+                        rateOptions.classList.toggle('hidden');
                     }
-                    else{
-                        modalCotainer.classList.toggle('hidden')
-                        rateOptions.classList.toggle('hidden')
-                    }
-                })
-
+                });
+        
                 const options = rateOptions.querySelectorAll('li');
                 options.forEach(option => {
                     option.addEventListener('click', (event) => {
@@ -148,145 +153,205 @@ const formatedDate = newDate.toISOString().split('T')[0];
                         video.playbackRate = rateSelected;
                         rate.innerText = `x${rateSelected}`;
                         rateOptions.classList.add('hidden');
-                        modalCotainer.classList.add('hidden')
+                        modalCotainer.classList.add('hidden');
                     });
                 });
-
+        
                 trackNext.addEventListener('click', ()=>{
-                    video.currentTime += 5;
-                })
-
+                    const newTime = video.currentTime + 5;
+                    const endTime = clipOffset + clipDuration;
+                    video.currentTime = Math.min(newTime, endTime);
+                });
+        
                 trackPrev.addEventListener('click', ()=>{
-                    video.currentTime -= 5;
-                })
-
+                    const newTime = video.currentTime - 5;
+                    video.currentTime = Math.max(newTime, clipOffset)
+                });
+        
                 playpause.addEventListener('click', ()=>{
-                    if (video.paused || video.ended) video.play();
+                    if (video.paused || video.ended) {
+                        if (reachedEnd) {
+                            video.currentTime = clipOffset;
+                            reachedEnd = false;
+                        }
+                        video.play()
+                    }
                     else video.pause();
-                })
-
+                });
+        
                 video.addEventListener('play', function() {
+                    if (!video.paused) {
+                        resetControlsTimeout();
+                    }
                     changeButtonState('playpause');
                 }, false);
-                
+        
                 video.addEventListener('pause', function() {
+                    clearTimeout(mouseTimeout);
+                    videoControls.classList.remove('hidden');
+                    clipMetadata.classList.remove('hidden')
+                    document.body.style.cursor = 'auto';
                     changeButtonState('playpause');
                 }, false);
-
+        
                 video.addEventListener('timeupdate', function() {
-                    currentTimeDuration()
-                    if (!progress.getAttribute('max')) progress.setAttribute('max', video.duration);
-                    progress.value = video.currentTime;
-                    progressBar.style.width = Math.floor((video.currentTime / video.duration) * 100) + '%';
+                    currentTimeDuration();
+                    if (!progress.getAttribute('max')) progress.setAttribute('max', clipDuration);
+                    progress.value = video.currentTime - clipOffset;
+                    progressBar.style.width = Math.floor((progress.value / clipDuration) * 100) + '%';
+        
+                    if (video.currentTime >= parseFloat(clipOffset + clipDuration)) {
+                        reachedEnd = true
+                        video.pause();
+                        video.currentTime = parseFloat(clipOffset + clipDuration);
+                    }
                 });
-
+        
                 video.addEventListener('click', ()=>{
-                    if (video.paused) video.play();
+                    if (video.paused){
+                        if (reachedEnd) {
+                            video.currentTime = clipOffset;
+                            reachedEnd = false;
+                        }
+                        video.play();
+                    }
                     else video.pause();
-                })
-
+                });
+        
                 progress.addEventListener('click', function(e) {
-                    const pos = (e.pageX  - (this.offsetLeft + this.offsetParent.offsetLeft + this.offsetParent.offsetParent.offsetLeft)) / this.offsetWidth;
-                    video.currentTime = pos * video.duration;
+                    const pos = (e.pageX - (this.offsetLeft + this.offsetParent.offsetLeft + this.offsetParent.offsetParent.offsetLeft)) / this.offsetWidth;
+                    video.currentTime = clipOffset + (pos * clipDuration);
                 });
-
+        
                 progress.addEventListener('mouseover', function (e) {
-                    tooltip.classList.remove('hidden')
+                    tooltip.classList.remove('hidden');
                 });
-
+        
                 progress.addEventListener('mouseout', function (e) {
                     tooltip.classList.add('hidden');
                 });
-
+        
                 progress.addEventListener('mousemove', function (e) {
                     const pos = (e.pageX - (this.offsetLeft + this.offsetParent.offsetLeft + this.offsetParent.offsetParent.offsetLeft)) / this.offsetWidth;
-                    const duration = pos * video.duration;
-                    const hours = Math.floor(duration / 3600);
-                    const minutes = Math.floor((duration % 3600) / 60);
-                    const seconds = Math.floor(duration % 60);
-                    const timeString = `${hours > 0 ? hours + ':' : ''}${hours > 0 && minutes < 10 ? '0' : ''}${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+                    const newCurrentTime = (pos * clipDuration);
+                    const timeString = formatTime(parseInt(newCurrentTime));
                     tooltip.textContent = timeString;
                     tooltip.style.left = `${e.pageX}px`;
                 });
-
+        
                 fullscreen.addEventListener('click', ()=>{
                     if(fullscreen.getAttribute("data-state") === 'maximize'){
-                        fullscreen.setAttribute("data-state", 'minimize')
-                        minimizeIcon.classList.remove('hidden')
-                        maximizeIcon.classList.add('hidden')
+                        fullscreen.setAttribute("data-state", 'minimize');
+                        minimizeIcon.classList.remove('hidden');
+                        maximizeIcon.classList.add('hidden');
                         videoContainer.requestFullscreen();
-                    }else{
-                        fullscreen.setAttribute("data-state", 'maximize')
+                    } else {
+                        fullscreen.setAttribute("data-state", 'maximize');
                         document.exitFullscreen();
-                        minimizeIcon.classList.add('hidden')
-                        maximizeIcon.classList.remove('hidden')
+                        minimizeIcon.classList.add('hidden');
+                        maximizeIcon.classList.remove('hidden');
                     }
-                })
-
+                });
+        
                 document.addEventListener('keydown', function(event) {
-                    if (event.code === 'ArrowRight') video.currentTime += 5;
-                    if (event.code === 'ArrowLeft') video.currentTime -= 5;
+                    if (event.code === 'ArrowRight'){
+                        const newTime = video.currentTime + 5;
+                        const endTime = clipOffset + clipDuration;
+                        video.currentTime = Math.min(newTime, endTime);
+                    }
+                    if (event.code === 'ArrowLeft'){
+                        const newTime = video.currentTime - 5;
+                        video.currentTime = Math.max(newTime, clipOffset)
+                    }
                     if (event.code === 'Space') {
                         event.stopPropagation();
                         event.preventDefault();
-                        if (video.paused || video.ended)  video.play()
-                        else video.pause()
+                        if (video.paused || video.ended){
+                            if (reachedEnd) {
+                                video.currentTime = clipOffset;
+                                reachedEnd = false;
+                            }
+                            video.play();
+                        }
+                        else video.pause();
                     }
-                    if (event.code === 'KeyF') changeButtonState('maximizeminimize')
+                    if (event.code === 'KeyF') changeButtonState('maximizeminimize');
                 });
-
+        
                 function changeButtonState(type) {
                     if (type == 'playpause') {
                         if (video.paused || video.ended) {
                             playpause.setAttribute('data-state', 'play');
-                            stopIcon.classList.add('hidden')
-                            playIcon.classList.remove('hidden')
-                        }
-                        else {
+                            stopIcon.classList.add('hidden');
+                            playIcon.classList.remove('hidden');
+                        } else {
                             playpause.setAttribute('data-state', 'pause');
-                            stopIcon.classList.remove('hidden')
-                            playIcon.classList.add('hidden')
+                            stopIcon.classList.remove('hidden');
+                            playIcon.classList.add('hidden');
                         }
                     }
                     else if (type == 'maximizeminimize') {
                         if(fullscreen.getAttribute("data-state") === 'maximize'){
-                            fullscreen.setAttribute("data-state", 'minimize')
-                            minimizeIcon.classList.remove('hidden')
-                            maximizeIcon.classList.add('hidden')
+                            fullscreen.setAttribute("data-state", 'minimize');
+                            minimizeIcon.classList.remove('hidden');
+                            maximizeIcon.classList.add('hidden');
                             videoContainer.requestFullscreen();
-                        }else{
-                            fullscreen.setAttribute("data-state", 'maximize')
-                            minimizeIcon.classList.add('hidden')
-                            maximizeIcon.classList.remove('hidden')
+                        } else {
+                            fullscreen.setAttribute("data-state", 'maximize');
+                            minimizeIcon.classList.add('hidden');
+                            maximizeIcon.classList.remove('hidden');
                             document.exitFullscreen();
                         }
                     }
                 }
+        
+                function currentTimeDuration() {
+                    const currTime = Math.round(video.currentTime - clipOffset);
+                    const duration = Math.round(clipDuration);
 
-                function currentTimeDuration(){
-                    const currTime = Math.round(video.currentTime);
-                    const duration = Math.round(video.duration);
-                    
                     const currentTimeStr = formatTime(currTime);
                     const durationStr = formatTime(duration);
-
+        
                     currentTime.innerText = currentTimeStr;
                     if(durationStr)
                         durationSpan.innerText = durationStr;
                 }
-
+        
                 function formatTime(time) {
                     let hours = Math.floor(time / 3600);
                     let minutes = Math.floor((time % 3600) / 60);
                     let seconds = time % 60;
-
+        
                     if (hours > 0) {
                         return `${hours}:${(minutes < 10 ? '0' : '') + minutes}:${(seconds < 10 ? '0' : '') + seconds}`;
                     } else {
                         return `${minutes}:${(seconds < 10 ? '0' : '') + seconds}`;
                     }
                 }
-            })
+
+                function resetControlsTimeout() {
+                    clearTimeout(mouseTimeout);
+                    videoControls.classList.remove('hidden');
+                    clipMetadata.classList.remove('hidden')
+                    document.body.style.cursor = 'auto';
+                    mouseTimeout = setTimeout(()=>{
+                        if(!video.paused) {
+                            videoControls.classList.add('hidden')
+                            clipMetadata.classList.add('hidden')
+                            document.body.style.cursor = 'none';
+                        }
+                    }, 3000);
+                }
+
+                videoContainer.addEventListener('mousemove', resetControlsTimeout);
+                videoContainer.addEventListener('mouseleave', ()=>{
+                    if(!video.paused) {
+                        document.body.style.cursor = 'none';
+                        videoControls.classList.add('hidden');
+                        clipMetadata.classList.add('hidden')
+                    }
+                });
+            });
         </script>
     </body>
 </html>

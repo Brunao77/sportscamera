@@ -8,11 +8,22 @@ export class ClipsModel {
     date,
     establishment_name,
     video_id,
+    clip_duration,
+    clip_offset,
   }) {
     try {
       const { rows } = await pool.query(
-        "INSERT INTO clips (title, key, clip_url, date, establishment_name, video_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING clip_id",
-        [title, key, clip_url, date, establishment_name, video_id]
+        "INSERT INTO clips (title, key, clip_url, date, establishment_name, video_id, clip_duration, clip_offset) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING clip_id",
+        [
+          title,
+          key,
+          clip_url,
+          date,
+          establishment_name,
+          video_id,
+          clip_duration,
+          clip_offset,
+        ]
       );
       return rows[0];
     } catch (error) {

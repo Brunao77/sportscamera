@@ -49,11 +49,11 @@ const clips = await ClipsModel.getAllByVideoId({ video_id: parseInt(video_id, 10
 if(Astro.request.method === 'POST'){
     const {title, start, end} = await Astro.request.json();
 
-    const intStart = Math.trunc((start / 20))
-    const intEnd = Math.trunc((end / 20))
+    const intStart = Math.trunc((start / 40))
+    const intEnd = Math.trunc((end / 40))
 
-    const lastSegmentDuration = end - (intEnd * 20);
-	const TIME_OFFSET = start - (intStart * 20);
+    const lastSegmentDuration = end - (intEnd * 40);
+	const TIME_OFFSET = start - (intStart * 40);
 	const clip_duration = end - start
 
     const newDate = new Date(date);
@@ -63,14 +63,14 @@ if(Astro.request.method === 'POST'){
     const m3u8Content = [
         '#EXTM3U',
         '#EXT-X-VERSION:3',
-        `#EXT-X-TARGETDURATION: 20`,
+        `#EXT-X-TARGETDURATION: 40`,
         `#EXT-X-MEDIA-SEQUENCE: ${intStart}`,
 		//`#EXT-X-START:TIME-OFFSET=${TIME_OFFSET}`
     ];
 
     for (let i = intStart; i <= intEnd; i++) {
         const ts = `${camera_id}a${formatedDate}a${formatedTime}a${i}.ts`
-        m3u8Content.push(`#EXTINF:20.000000,`)
+        m3u8Content.push(`#EXTINF:40.000000,`)
         m3u8Content.push(ts);
         /*if(i !== intEnd){
             m3u8Content.push(`#EXTINF:20.000000,`)

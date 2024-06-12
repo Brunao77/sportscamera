@@ -126,7 +126,7 @@ const cameras = await CameraModel.getAll({establishment_id});
 						stopChronometer();
 						toastInfo.innerText = `Subiendo video de la cancha ${fieldName}`
         				toastSuccess.classList.remove('hidden')
-						await fetch(`http://localhost:3000/stop-record?rtsp=${rtsp}`)
+						fetch(`http://localhost:3000/stop-record?rtsp=${rtsp}`)
 						.then(async (response) => {
 							if(response.status === 200){
 								const { start_time, end_time } = await response.json()

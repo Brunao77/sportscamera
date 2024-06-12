@@ -16,4 +16,5 @@
 [ x ] Backend /add y btn funcionalidad cuando vengo desde otra opcion
 [   ] Crear clip ffmpeg a webm /record * FUNCIONALIDAD CREADA PERO NO IMPLEMENTADA EN VERCEL YA QUE CONSUME MUCHO, CONTRATAR VPS * *TEMPORALMENTE SE CREAN LOS CLIPS CON M3U8*
 [ x ] Adaptar reproductor al clip /clip
-[   ] Agregar en el video cuando se hace click en algun boton /record /clip
+[ x ] Agregar en el video cuando se hace click en algun boton /record /clip
+[   ] Agregar animaciones a la info del click en algun boton /record /clip

@@ -104,7 +104,11 @@ if(Astro.request.method === 'POST'){
 
 		const command = new GetObjectCommand(getObjectParams);
 		const clip_url = await getSignedUrl(S3, command, { expiresIn: 604800 });
-        const { clip_id } = await ClipsModel.insert({ title, key, clip_url, date: formatedDate, establishment_name: name, video_id: parseInt(video_id, 10), clip_duration, clip_offset: TIME_OFFSET })
+
+		const ts_start = `${camera_id}a${formatedDate}a${formatedTime}a${intStart}.ts`
+        const ts_end = `${camera_id}a${formatedDate}a${formatedTime}a${intEnd}.ts`
+
+        const { clip_id } = await ClipsModel.insert({ title, key, clip_url, date: formatedDate, establishment_name: name, video_id: parseInt(video_id, 10), clip_duration, clip_offset: TIME_OFFSET, ts_start, ts_end })
 
         return new Response(JSON.stringify({ clip_id }), { status: 200 })
 
@@ -193,6 +197,25 @@ if(Astro.request.method === 'POST'){
 										<button id="download_button" class="flex items-center justify-center cursor-pointer rounded w-[250px] bg-primary p-2 disabled:bg-primary_disabled">Descargar</button>
 								</div>
 						</div>
+						<div id="track_prev_info" class="hidden w-32 h-32 bg-black/[.7] rounded-full absolute top-1/2 left-96 -translate-y-1/2 flex flex-col items-center justify-center text-white gap-2">
+							<div class="flex flex-row rotate-180">
+								<Play />
+								<Play />
+								<Play />
+							</div>
+							<span>10 segundos</span>
+						</div>
+						<div id="playstop_info" class="hidden w-32 h-32 bg-black/[.7] rounded-full absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 flex flex-col items-center justify-center text-white gap-2">
+							<Play id="play_icon_info" /><Stop hidden id="stop_icon_info" />
+						</div>
+						<div id="track_next_info" class="hidden w-32 h-32 bg-black/[.7] rounded-full absolute top-1/2 right-96 -translate-y-1/2 flex flex-col items-center justify-center text-white gap-2">
+							<div class="flex">
+								<Play />
+								<Play />
+								<Play />
+							</div>
+							<span>10 segundos</span>
+						</div>
 				</div>
 				<style is:global>
 						progress::-webkit-progress-value {
@@ -270,6 +293,11 @@ if(Astro.request.method === 'POST'){
 						const spinnerVideo = document.getElementById('spinnerVideo')
 						const tooltip = document.getElementById("tooltip")
 						const modalCotainer = document.getElementById("modal_container")
+						const trackNextInfo = document.getElementById("track_next_info")
+						const trackPrevInfo = document.getElementById("track_prev_info")
+						const playstopInfo = document.getElementById("playstop_info")
+						const stopIconInfo = document.getElementById("stop_icon_info")
+						const playIconInfo = document.getElementById("play_icon_info")
                         let clipSubmit = false
 						let modalOpen = false
 						let currentDurationStartClipSeconds = 0
@@ -567,13 +595,37 @@ if(Astro.request.method === 'POST'){
 								})
 
 								document.addEventListener('keydown', function(event) {
-										if (event.code === 'ArrowRight' && !modalOpen && !isClipping) video.currentTime += 10;
-										if (event.code === 'ArrowLeft' && !modalOpen && !isClipping) video.currentTime -= 10;
+										if (event.code === 'ArrowRight' && !modalOpen && !isClipping){
+											trackNextInfo.classList.remove('hidden')
+											video.currentTime += 10;
+											setTimeout(()=>{
+												trackNextInfo.classList.add('hidden')
+											}, 500)
+										}
+										if (event.code === 'ArrowLeft' && !modalOpen && !isClipping){
+											trackPrevInfo.classList.remove('hidden')
+											video.currentTime -= 10;
+											setTimeout(()=>{
+												trackPrevInfo.classList.add('hidden')
+											}, 500)
+										}
 										if (event.code === 'Space' && !modalOpen && !isClipping) {
 												event.stopPropagation();
 												event.preventDefault();
-												if (video.paused || video.ended) video.play()
-												else video.pause()
+												if (video.paused || video.ended){
+													stopIconInfo.classList.remove('hidden')
+													playIconInfo.classList.add('hidden')
+													video.play()
+												}
+												else{
+													stopIconInfo.classList.add('hidden')
+													playIconInfo.classList.remove('hidden')
+													video.pause()
+												}
+												playstopInfo.classList.remove('hidden')
+												setTimeout(()=>{
+													playstopInfo.classList.add('hidden')
+												}, 500)
 										}
 										if (event.code === 'Enter' && !modalOpen) {
 												if(clipBtn.getAttribute('clip-state') === 'start') startClip()

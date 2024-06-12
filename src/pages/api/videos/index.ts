@@ -2,6 +2,7 @@ import { VideosModel } from "../../../models/videos.js"
 import type { APIContext } from 'astro';
 import { S3 } from "../../../s3.js";
 import { ListObjectsCommand, DeleteObjectsCommand } from "@aws-sdk/client-s3";
+import { ClipsModel } from "../../../models/clips.js";
 
 export async function DELETE(context: APIContext){ //DELETE VIDEO FROM TABLE AND VIDEO IN BUCKET EXCEPT THE .TS UTILS FOR CLIPS
   const { video } =  await context.request.json()
@@ -35,17 +36,36 @@ export async function DELETE(context: APIContext){ //DELETE VIDEO FROM TABLE AND
 
       if (Contents && Contents.length > 0) {
 
+        const clips = await ClipsModel.getAllByVideoId({ video_id })
+
+        const ContentsForDelete = Contents.filter(({ Key }) => {
+          const match = Key.match(/(\d+)\.ts$/);
+          if (!match) {
+              return true;
+          }
+          const number = parseInt(match[1], 10);
+
+          return !clips.some(({ts_start, ts_end}) => {
+            const startMatch = ts_start.match(/(\d+)\.ts$/);
+            const numberStart = parseInt(startMatch[1], 10);
+
+            const endMatch = ts_end.match(/(\d+)\.ts$/);
+            const numberEnd = parseInt(endMatch[1], 10);
+
+            return number >= numberStart && number <= numberEnd});
+          })
+
         const deleteParams = {
           Bucket: import.meta.env.BUCKET_NAME,
           Delete: {
-              Objects: Contents.map(obj => ({ Key: obj.Key }))
+              Objects: ContentsForDelete.map(obj => ({ Key: obj.Key }))
           }
         };
   
         try {
-            await S3.send(new DeleteObjectsCommand(deleteParams));
+            const data = await S3.send(new DeleteObjectsCommand(deleteParams));
 
-            return new Response(JSON.stringify({start_time}), {
+            return new Response(JSON.stringify({message:"Objetos borrados", data: data.Deleted}), {
               status: 200
             })
         } catch (err) {

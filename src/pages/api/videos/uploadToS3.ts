@@ -17,7 +17,7 @@ export async function POST(context: APIContext){
        
         await S3.send(new PutObjectCommand(params));
 
-        return new Response('Video subido y datos guardados con éxito', { status: 200 });
+        return new Response(JSON.stringify({ message: 'Video subido y datos guardados con éxito'}), { status: 200 });
         
     } catch (error) {
         console.error(error);

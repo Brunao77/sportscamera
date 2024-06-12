@@ -10,6 +10,7 @@
 [ x ] Funcionalidad de crear clips
 [ x ] Crear key unica para cada clip
 [   ] Toast Success consistente y apilable /record y /video-list
+[   ] Response del local no se envia
 [ x ] Arreglar close modal /player
 [ x ] Agregar menu opciones para roles de usuario
 [ x ] Arreglar Icon en input

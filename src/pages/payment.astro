@@ -20,6 +20,12 @@ if (!pago && today.getDate() <= 7) {
     const lastMonthDate = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
     month = new Intl.DateTimeFormat('es-ES', { month: 'long'}).format(lastMonthDate).toUpperCase();
 }
+
+if(Astro.request.method === 'POST'){
+	const formData = await Astro.request.formData()
+	const file = formData.get('file')
+	console.log(file)
+}
 ---
 <LayoutEstablishment title="Payment / Sportscamera!">
     <section class="bg-white w-full  h-full md:rounded-r-xl text-center z-0 ">
@@ -36,10 +42,71 @@ if (!pago && today.getDate() <= 7) {
                 <span class="font-semibold text-xl">Nombre: <span class="font-normal text-xl">Bruno Munne</span></span>
             </div>
             <p>Enviar comprobante al mail: <strong>sportscamera123@gmail.com</strong></p>
+            <form id="form" method="POST">
+                <h1>Envía tu comprobante</h1>
+                <div id="drop_zone" class="w-96 h-96 flex items-center justify-center cursor-pointer text-center flex-col border-dashed border-blue-400">
+                    <input type="file" name="file" id="file_input" style="display:none;"/>
+                    <p>Arrastra y suelta tu archivo o busca en local.</p>
+                    <span id='file_name' class="text-red-400"></span>
+                </div>
+                <button type="submit" id="send_file">Enviar</button>
+            </form>
             <script>
                 const cvu = document.getElementById('cvu').innerText
                 document.getElementById('copy_btn').addEventListener("click", async()=>{
                     await navigator.clipboard.writeText(cvu);
+                })
+
+                const form = document.getElementById('form')
+                const dropZone = document.getElementById('drop_zone');
+                const fileInput = document.getElementById('file_input');
+                const fileName = document.getElementById('file_name')
+                const sendFileBtn = document.getElementById("send_file")
+
+                dropZone.addEventListener('click', e => fileInput.click());
+
+                dropZone.addEventListener('dragover', function(e){
+                    e.preventDefault();
+                    this.classList.remove('border-blue-400');
+                    this.classList.add('border-red-400');
+                    this.classList.add('text-red-400');
+                });
+
+                dropZone.addEventListener('dragleave', function(e){
+                    e.preventDefault();
+                    this.classList.add('border-blue-400');
+                    this.classList.remove('border-red-400');
+                    this.classList.remove('text-red-400');
+                });
+
+                dropZone.addEventListener('drop', function(e){
+                    e.preventDefault();
+                    this.classList.add('border-blue-400');
+                    this.classList.remove('border-red-400');
+                    this.classList.remove('text-red-400');
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        handleFileUpload(files[0]);
+                    }
+                });
+
+                fileInput.addEventListener('change', e => {
+                    const files = e.target.files;
+                    if (files.length > 0) {
+                        handleFileUpload(files[0]);
+                    }
+                });
+
+                function handleFileUpload(file) {
+                    fileName.innerText = file.name
+                }
+
+                sendFileBtn.addEventListener('click', function(){
+                    sendFileBtn.disabled = true
+                    const file = fileInput.files[0];
+                    const formData = new FormData();
+                    formData.append("userfile", file);
+                    
                 })
             </script>
         }

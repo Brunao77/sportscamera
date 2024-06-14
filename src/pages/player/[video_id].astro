@@ -135,7 +135,7 @@ if(Astro.request.method === 'POST'){
 						<div class="bg-red-700 absolute top-5 left-1/2 -translate-x-1/2 text-white text-2xl rounded px-5 py-2 hidden" id="clip_chronometer">00:00</div>
 						<div id="video-controls" class="absolute bottom-0 w-full flex flex-col px-3 py-1 gap-1" data-state="hidden">
 								<progress id="progress" class="w-full overflow-hidden h-[7px] rounded-lg color-primary cursor-pointer hover:h-[10px]" min="0" value="0"><span id="progress-bar"></span></progress>
-								<span id="tooltip" class="absolute text-white top-[-50%]"></span>
+								<span id="tooltip" class="absolute text-white top-[-50%] select-none"></span>
 								<div class="flex justify-between items-end md:items-center px-2">
 										<div class="flex gap-2 md:gap-5 items-center flex-row">
 												<button id="track_prev" tabindex="-1"><TrackPrev /></button>
@@ -304,6 +304,7 @@ if(Astro.request.method === 'POST'){
 						let currentDurationStopClipSeconds = 0
                         let mouseTimeout;
                         let isClipping = false
+						let isDragging = false;
 						
 						if (Hls.isSupported()) {
 								video.play()
@@ -325,8 +326,10 @@ if(Astro.request.method === 'POST'){
 								video.addEventListener('timeupdate', function() {
 										currentTimeDuration()
 										if (!progress.getAttribute('max')) progress.setAttribute('max', video.duration);
-										progress.value = video.currentTime;
-										progressBar.style.width = Math.floor((video.currentTime / video.duration) * 100) + '%';
+										if(!isDragging){
+											progress.value = video.currentTime;
+											progressBar.style.width = Math.floor((video.currentTime / video.duration) * 100) + '%';
+										}
 								});
 
 								video.addEventListener('click', ()=>{
@@ -557,8 +560,39 @@ if(Astro.request.method === 'POST'){
 								})
 
 								progress.addEventListener('click', function(e) {
-										const pos = (e.pageX  - (this.offsetLeft + this.offsetParent.offsetLeft + this.offsetParent.offsetParent.offsetLeft)) / this.offsetWidth;
-										video.currentTime = pos * video.duration;
+									const pos = (e.pageX - (progress.offsetLeft + progress.offsetParent.offsetLeft + progress.offsetParent.offsetParent.offsetLeft)) / progress.offsetWidth;
+									const newTime = pos * video.duration;
+									video.currentTime = newTime;
+									progress.value = newTime;
+									progressBar.style.width = Math.floor((newTime / video.duration) * 100) + '%';
+								});
+
+								progress.addEventListener('mousedown', function(e) {
+									isDragging = true;
+									const pos = (e.pageX - (progress.offsetLeft + progress.offsetParent.offsetLeft + progress.offsetParent.offsetParent.offsetLeft)) / progress.offsetWidth;
+									const newTime = pos * video.duration;
+									progress.value = newTime;
+									progressBar.style.width = Math.floor((newTime / video.duration) * 100) + '%';
+								});
+
+								document.addEventListener('mousemove', function(e) {
+									if (isDragging) {
+										const pos = (e.pageX - (progress.offsetLeft + progress.offsetParent.offsetLeft + progress.offsetParent.offsetParent.offsetLeft)) / progress.offsetWidth;
+										const newTime = pos * video.duration;
+										progress.value = newTime;
+										progressBar.style.width = Math.floor((newTime / video.duration) * 100) + '%';
+									}
+								});
+
+								document.addEventListener('mouseup', function(e) {
+									if (isDragging) {
+										isDragging = false;
+										const pos = (e.pageX - (progress.offsetLeft + progress.offsetParent.offsetLeft + progress.offsetParent.offsetParent.offsetLeft)) / progress.offsetWidth;
+										const newTime = pos * video.duration;
+										video.duration = newTime
+										progress.value = newTime;
+										progressBar.style.width = Math.floor((newTime / video.duration) * 100) + '%';
+									}
 								});
 
 								progress.addEventListener('mouseover', function (e) {
@@ -737,8 +771,12 @@ if(Astro.request.method === 'POST'){
                                 }
 
                                 videoContainer.addEventListener('mousemove', resetControlsTimeout);
-                                videoContainer.addEventListener('mouseleave', ()=>{
+                                videoContainer.addEventListener('mouseleave', function(event){
                                     if(!video.paused) {
+										const withinWindow = event.relatedTarget || event.toElement;
+										if (!withinWindow) {
+											return;
+										}
                                         document.body.style.cursor = 'none';
                                         videoControls.classList.add('hidden');
                                     }

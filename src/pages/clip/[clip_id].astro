@@ -166,10 +166,15 @@ const formatedDate = newDate.toISOString().split('T')[0];
 
                 downloadBtn.addEventListener('click', ()=>{
                     if(!modalCotainer.classList.contains('hidden')){
+                        if(!rateOptions.classList.contains('hidden')){
+                            rateOptions.classList.add('hidden')
+                        }
                         if(!downloadInfo.classList.contains('hidden')){
-                            modalCotainer.classList.toggle('hidden');
-                            downloadInfo.classList.toggle('hidden');
-                        } else downloadInfo.classList.toggle('hidden');
+                            modalCotainer.classList.toggle('hidden')
+                            downloadInfo.classList.toggle('hidden')
+                        }else{
+                            downloadInfo.classList.toggle('hidden')
+                        }
                     } else {
                         modalCotainer.classList.toggle('hidden');
                         downloadInfo.classList.toggle('hidden');
@@ -178,10 +183,15 @@ const formatedDate = newDate.toISOString().split('T')[0];
         
                 rate.addEventListener('click', ()=>{
                     if(!modalCotainer.classList.contains('hidden')){
+                        if(!downloadInfo.classList.contains('hidden')){
+                            downloadInfo.classList.add('hidden')
+                        }
                         if(!rateOptions.classList.contains('hidden')){
-                            modalCotainer.classList.toggle('hidden');
-                            rateOptions.classList.toggle('hidden');
-                        } else rateOptions.classList.toggle('hidden');
+                            modalCotainer.classList.toggle('hidden')
+                            rateOptions.classList.toggle('hidden')
+                        }else{
+                            rateOptions.classList.toggle('hidden')
+                        }
                     } else {
                         modalCotainer.classList.toggle('hidden');
                         rateOptions.classList.toggle('hidden');

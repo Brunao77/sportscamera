@@ -16,12 +16,11 @@ const clips = await ClipsModel.getAll()
 ---
 
 <LayoutEstablishment title="Clips / SportsCamera!">
-	<section class="bg-white h-full md:rounded-r-xl text-center z-0 w-full md:overflow-hidden">
+	<section class="bg-white h-full md:rounded-r-xl text-center z-0 w-full overflow-hidden">
 		<strong class="font-medium text-2xl md:text-3xl text-primary text-nowrap">Lista de clips</strong>
-		<div>
+		<div class="overflow-auto h-full pb-14">
             {clips ? clips.map(({ title, inserted_at, key })=>{
-                return
-                <Clip title={title} inserted_at={inserted_at} key={key} />
+                return <Clip title={title} inserted_at={inserted_at} key={key} />
             }) : <span>No existen clips</span>}
         </div>
 	</section>

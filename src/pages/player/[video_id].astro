@@ -296,6 +296,7 @@ if(Astro.request.method === 'POST'){
 			let currentDurationStopClipSeconds = 0
             let mouseTimeout;
             let isClipping = false
+			let isDragging = false
 			
 			if (Hls.isSupported()) {
 				video.play()
@@ -317,10 +318,10 @@ if(Astro.request.method === 'POST'){
 				video.addEventListener('timeupdate', function() {
 					currentTimeDuration()
 					if (!progress.getAttribute('max')) progress.setAttribute('max', video.duration);
-										if(!isDragging){
-						progress.value = video.currentTime;
-						progressBar.style.width = Math.floor((video.currentTime / video.duration) * 100) + '%';
-										}
+						if(!isDragging){
+							progress.value = video.currentTime;
+							progressBar.style.width = Math.floor((video.currentTime / video.duration) * 100) + '%';
+						}
 				});
 
 				video.addEventListener('click', ()=>{
@@ -550,41 +551,41 @@ if(Astro.request.method === 'POST'){
 					else video.pause();
 				})
 
-								progress.addEventListener('click', function(e) {
-									const pos = (e.pageX - (progress.offsetLeft + progress.offsetParent.offsetLeft + progress.offsetParent.offsetParent.offsetLeft)) / progress.offsetWidth;
-									const newTime = pos * video.duration;
-									video.currentTime = newTime;
-									progress.value = newTime;
-									progressBar.style.width = Math.floor((newTime / video.duration) * 100) + '%';
-								});
+				progress.addEventListener('click', function(e) {
+					const pos = (e.pageX - (progress.offsetLeft + progress.offsetParent.offsetLeft + progress.offsetParent.offsetParent.offsetLeft)) / progress.offsetWidth;
+					const newTime = pos * video.duration;
+					video.currentTime = newTime;
+					progress.value = newTime;
+					progressBar.style.width = Math.floor((newTime / video.duration) * 100) + '%';
+				});
 
-								progress.addEventListener('mousedown', function(e) {
-									isDragging = true;
-									const pos = (e.pageX - (progress.offsetLeft + progress.offsetParent.offsetLeft + progress.offsetParent.offsetParent.offsetLeft)) / progress.offsetWidth;
-									const newTime = pos * video.duration;
-									progress.value = newTime;
-									progressBar.style.width = Math.floor((newTime / video.duration) * 100) + '%';
-								});
+				progress.addEventListener('mousedown', function(e) {
+					isDragging = true;
+					const pos = (e.pageX - (progress.offsetLeft + progress.offsetParent.offsetLeft + progress.offsetParent.offsetParent.offsetLeft)) / progress.offsetWidth;
+					const newTime = pos * video.duration;
+					progress.value = newTime;
+					progressBar.style.width = Math.floor((newTime / video.duration) * 100) + '%';
+				});
 
-								document.addEventListener('mousemove', function(e) {
-									if (isDragging) {
-										const pos = (e.pageX - (progress.offsetLeft + progress.offsetParent.offsetLeft + progress.offsetParent.offsetParent.offsetLeft)) / progress.offsetWidth;
-										const newTime = pos * video.duration;
-										progress.value = newTime;
-										progressBar.style.width = Math.floor((newTime / video.duration) * 100) + '%';
-									}
-								});
+				document.addEventListener('mousemove', function(e) {
+					if (isDragging) {
+						const pos = (e.pageX - (progress.offsetLeft + progress.offsetParent.offsetLeft + progress.offsetParent.offsetParent.offsetLeft)) / progress.offsetWidth;
+						const newTime = pos * video.duration;
+						progress.value = newTime;
+						progressBar.style.width = Math.floor((newTime / video.duration) * 100) + '%';
+					}
+				});
 
-								document.addEventListener('mouseup', function(e) {
-									if (isDragging) {
-										isDragging = false;
-										const pos = (e.pageX - (progress.offsetLeft + progress.offsetParent.offsetLeft + progress.offsetParent.offsetParent.offsetLeft)) / progress.offsetWidth;
-										const newTime = pos * video.duration;
-										video.duration = newTime
-										progress.value = newTime;
-										progressBar.style.width = Math.floor((newTime / video.duration) * 100) + '%';
-									}
-								});
+				document.addEventListener('mouseup', function(e) {
+					if (isDragging) {
+						isDragging = false;
+						const pos = (e.pageX - (progress.offsetLeft + progress.offsetParent.offsetLeft + progress.offsetParent.offsetParent.offsetLeft)) / progress.offsetWidth;
+						const newTime = pos * video.duration;
+						video.duration = newTime
+						progress.value = newTime;
+						progressBar.style.width = Math.floor((newTime / video.duration) * 100) + '%';
+					}
+				});
 
 				progress.addEventListener('mouseover', function (e) {
 					tooltip.classList.remove('hidden')

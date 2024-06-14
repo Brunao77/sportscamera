@@ -1,14 +1,30 @@
 ---
     const { key, title, inserted_at } = Astro.props
+
+    const dateStr = "Wed Jun 12 2024 20:44:10 GMT-0300 (hora estándar de Argentina)";
+    const date = new Date(inserted_at);
+
+    // Formatear la fecha y la hora
+    const formattedDate = date.toLocaleString('es-AR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
 ---
 
-<div>
-    <span>{title}</span>
-    <time>{inserted_at}</time>
-    <video controls></video>
+<div class="flex flex-col items-start px-2">
+    <div>
+        <span class="text-primary font-semibold text-lg mr-5">{title}</span>
+        <time>{formattedDate }</time>
+    </div>
+    <video id={key} class="object-cover" controls width="640" height="360"></video>
 </div>
 <script is:inline define:vars={{ key }}>
-    const video = document.getElementsByTagName('video')[0]
+    const video = document.getElementById(key)
+    console.log(key)
     video.addEventListener('play', ()=>{
         if (Hls.isSupported()) {
             const hls = new Hls();

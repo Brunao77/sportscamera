@@ -2,6 +2,7 @@
 import BulletList from "../icons/BulletList.astro";
 import CameraWhite from "../icons/CameraWhite.astro";
 import Cash from "../icons/Cash.astro";
+import ClipList from "../icons/ClipList.astro";
 import Logout from "../icons/Logout.astro";
 import Settings from "../icons/Settings.astro";
 import User from "../icons/User.astro";
@@ -55,7 +56,7 @@ const establishment = await EstablishmentModel.getById({establishment_id})
         {role === 'A' && 
             <li>
                 <a class="w-full flex gap-2 hover:bg-[#a262a3] rounded-xl py-3 px-1 text-nowrap items-center" href="/clip-list">
-                    <span class="text-2xl font-semibold">+</span>
+                    <ClipList />
                     <span>Clips</span>
                 </a>
             </li>

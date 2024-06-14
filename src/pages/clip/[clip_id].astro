@@ -49,7 +49,7 @@ const formatedDate = newDate.toISOString().split('T')[0];
 						<div class="text-white text-sm md:text-md"><span id="current_time">0:00</span> / <span id="duration">0:00</span></div>
 					</div>
 					<div class="flex flex-row items-center gap-2 md:gap-5">
-                        <a tabindex="-1" href={clip_url} download><Download /></a>
+                        <button tabindex="-1" id="download"><Download /></button>
 						<button class="text-white text-lg font-medium rounded" id="rate" tabindex="-1">x1</button>
 						<button id="fs" data-state="maximize" tabindex="-1"><Maximize id="maximize_icon" /><Minimize hidden id="minimize_icon"/></button>
 					</div>
@@ -63,6 +63,10 @@ const formatedDate = newDate.toISOString().split('T')[0];
                     <li class="hover:bg-[#A6A5A5]/[.3] p-1" data-rate="1.5">1.5</li>
                     <li class="hover:bg-[#A6A5A5]/[.3] p-1" data-rate="2">2</li>
                 </ul>
+                <div class="hidden flex flex-col" id="download_info">
+                    <span>Para descargar utiliza la extension FetchV</span>
+                    <a href="https://chromewebstore.google.com/detail/fetchv-video-descargarmp4/imleiiaoeclikefimmcdkjabjbpcdgaj?hl=es&pli=1">Link extension</a>
+                </div>
             </div>
             <div id="clip-metadata" class="absolute top-2 left-2 text-white flex gap-2 items-end">
                 <span class="text-primary text-lg md:text-2xl font-medium truncate max-w-[100px] md:max-w-[600px]" title={title}>{title}</span>
@@ -140,6 +144,8 @@ const formatedDate = newDate.toISOString().split('T')[0];
 			const playstopInfo = document.getElementById("playstop_info")
 			const stopIconInfo = document.getElementById("stop_icon_info")
 			const playIconInfo = document.getElementById("play_icon_info")
+            const downloadBtn = document.getElementById('download')
+            const downloadInfo = document.getElementById('download_info')
             let reachedEnd = false;
             let mouseTimeout;
         
@@ -157,13 +163,35 @@ const formatedDate = newDate.toISOString().split('T')[0];
                 video.currentTime = clipOffset;
                 progress.setAttribute('max', clipDuration);
                 currentTimeDuration();
+
+                downloadBtn.addEventListener('click', ()=>{
+                    if(!modalCotainer.classList.contains('hidden')){
+                        if(!rateOptions.classList.contains('hidden')){
+                            rateOptions.classList.add('hidden')
+                        }
+                        if(!downloadInfo.classList.contains('hidden')){
+                            modalCotainer.classList.toggle('hidden')
+                            downloadInfo.classList.toggle('hidden')
+                        }else{
+                            downloadInfo.classList.toggle('hidden')
+                        }
+                    } else {
+                        modalCotainer.classList.toggle('hidden');
+                        downloadInfo.classList.toggle('hidden');
+                    }
+                })
         
                 rate.addEventListener('click', ()=>{
                     if(!modalCotainer.classList.contains('hidden')){
+                        if(!downloadInfo.classList.contains('hidden')){
+                            downloadInfo.classList.add('hidden')
+                        }
                         if(!rateOptions.classList.contains('hidden')){
-                            modalCotainer.classList.toggle('hidden');
-                            rateOptions.classList.toggle('hidden');
-                        } else rateOptions.classList.toggle('hidden');
+                            modalCotainer.classList.toggle('hidden')
+                            rateOptions.classList.toggle('hidden')
+                        }else{
+                            rateOptions.classList.toggle('hidden')
+                        }
                     } else {
                         modalCotainer.classList.toggle('hidden');
                         rateOptions.classList.toggle('hidden');

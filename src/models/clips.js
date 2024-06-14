@@ -1,6 +1,16 @@
 import { pool } from "./db.js";
 
 export class ClipsModel {
+  static async getAll() {
+    try {
+      const { rows } = await pool.query(
+        "SELECT * FROM clips ORDER BY inserted_at DESC;"
+      );
+      return rows;
+    } catch (error) {
+      console.log(error);
+    }
+  }
   static async insert({
     title,
     key,

@@ -9,6 +9,14 @@ export class EstablishmentModel {
       console.log(error);
     }
   }
+  static async getAllEstablishments() {
+    try {
+      const { rows } = await pool.query("SELECT * FROM establishments, users WHERE establishments.establishment_id = users.establishment_id AND users.role = 'E'");
+      return rows;
+    } catch (error) {
+      console.log(error);
+    }
+  }
   static async getById({ establishment_id }) {
     try {
       const { rows } = await pool.query(

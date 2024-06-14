@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import FormSearchVideo from '../components/FormSearchVideo.jsx'
 import { EstablishmentModel } from '../models/establishment.js';
 
-const establishments = await EstablishmentModel.getAll();
+const establishments = await EstablishmentModel.getAllEstablishments();
 
 let optionsEstablishments = establishments && establishments.map(({establishment_id, name}) => {
 	return {value: establishment_id, text:name}

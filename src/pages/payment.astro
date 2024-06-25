@@ -1,7 +1,10 @@
 ---
+import Button from "../components/Button.astro";
 import Navbar from "../components/Navbar.astro";
 import Copy from "../icons/Copy.astro";
 import LayoutEstablishment from "../layouts/LayoutEstablishment.astro";
+import { UserModel } from "../models/user";
+import nodemailer from "nodemailer"
 
 const user = Astro.locals.user;
 if (!user) {
@@ -24,7 +27,32 @@ if (!pago && today.getDate() <= 7) {
 if(Astro.request.method === 'POST'){
 	const formData = await Astro.request.formData()
 	const file = formData.get('file')
-	console.log(file)
+    const { email } = await UserModel.profile({ id: user.id })
+    console.log(file)
+
+    /*const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: import.meta.env.EMAIL,
+            pass: import.meta.env.EMAIL_PASSWORD,
+        },
+    });
+    const mailOptions = {
+        from: email,
+        to: import.meta.env.EMAIL,
+        subject: 'Payment ' + email,
+        attachments: [
+            {
+                filename: file.name,
+                content: fileBuffer,
+                contentType: file.type
+            }
+        ]
+    };
+    transporter.sendMail(mailOptions, (error) => {
+        if (error) return error = 'Error al enviar el mensaje'
+        return Astro.redirect('/')
+    });*/
 }
 ---
 <LayoutEstablishment title="Payment / Sportscamera!">
@@ -42,14 +70,19 @@ if(Astro.request.method === 'POST'){
                 <span class="font-semibold text-xl">Nombre: <span class="font-normal text-xl">Bruno Munne</span></span>
             </div>
             <p>Enviar comprobante al mail: <strong>sportscamera123@gmail.com</strong></p>
-            <form id="form" method="POST">
-                <h1>Envía tu comprobante</h1>
-                <div id="drop_zone" class="w-96 h-96 flex items-center justify-center cursor-pointer text-center flex-col border-dashed border-blue-400">
+            <form id="form" method="POST" action="/payment" class="w-full flex flex-col items-center gap-2 my-4">
+                <div id="drop_zone" class="w-96 h-72 flex items-center justify-center cursor-pointer text-center flex-col border-2 border-dashed border-gray-400">
                     <input type="file" name="file" id="file_input" style="display:none;"/>
-                    <p>Arrastra y suelta tu archivo o busca en local.</p>
-                    <span id='file_name' class="text-red-400"></span>
+                    <div id="info_drag">
+                        <span class="font-semibold">Envía tu comprobante</span>
+                        <p>Arrastra y suelta tu archivo o <span class="text-blue-500">busca en el ordenador</span></p>
+                    </div>
+                    <span id='file_name' class="text-primary font-semibold hidden"></span>
                 </div>
-                <button type="submit" id="send_file">Enviar</button>
+                <div class="flex w-96 justify-end">
+                    <Button type="submit" id="clean_file" >Limpiar</Button>
+                    <Button type="submit" id="send_file">Enviar</Button>
+                </div>
             </form>
             <script>
                 const cvu = document.getElementById('cvu').innerText
@@ -62,28 +95,32 @@ if(Astro.request.method === 'POST'){
                 const fileInput = document.getElementById('file_input');
                 const fileName = document.getElementById('file_name')
                 const sendFileBtn = document.getElementById("send_file")
+                const infoDrag = document.getElementById("info_drag")
+                const cleanFile = document.getElementById("clean_file")
+                cleanFile.classList.add('hidden')
+                sendFileBtn.disabled = true
 
                 dropZone.addEventListener('click', e => fileInput.click());
 
                 dropZone.addEventListener('dragover', function(e){
                     e.preventDefault();
-                    this.classList.remove('border-blue-400');
-                    this.classList.add('border-red-400');
-                    this.classList.add('text-red-400');
+                    this.classList.remove('border-gray-400');
+                    this.classList.add('border-primary');
+                    this.classList.add('text-primary');
                 });
 
                 dropZone.addEventListener('dragleave', function(e){
                     e.preventDefault();
-                    this.classList.add('border-blue-400');
-                    this.classList.remove('border-red-400');
-                    this.classList.remove('text-red-400');
+                    this.classList.add('border-gray-400');
+                    this.classList.remove('border-primary');
+                    this.classList.remove('text-primary');
                 });
 
                 dropZone.addEventListener('drop', function(e){
                     e.preventDefault();
-                    this.classList.add('border-blue-400');
-                    this.classList.remove('border-red-400');
-                    this.classList.remove('text-red-400');
+                    this.classList.add('border-gray-400');
+                    this.classList.remove('border-primary');
+                    this.classList.remove('text-primary');
                     const files = e.dataTransfer.files;
                     if (files.length > 0) {
                         handleFileUpload(files[0]);
@@ -92,21 +129,43 @@ if(Astro.request.method === 'POST'){
 
                 fileInput.addEventListener('change', e => {
                     const files = e.target.files;
+                    infoDrag.classList.add('hidden')
                     if (files.length > 0) {
                         handleFileUpload(files[0]);
                     }
                 });
 
                 function handleFileUpload(file) {
+                    cleanFile.classList.remove('hidden')
+                    sendFileBtn.disabled = false
+                    fileName.classList.remove('hidden')
                     fileName.innerText = file.name
+                    dropZone.classList.remove('border-gray-400');
+                    dropZone.classList.add('border-primary');
+                    dropZone.classList.add('text-primary');
+                    fileInput.disabled = true
                 }
 
-                sendFileBtn.addEventListener('click', function(){
+                cleanFile.addEventListener('click',() => {
+                    infoDrag.classList.remove('hidden')
+                    cleanFile.classList.add('hidden')
+                    fileName.classList.add('hidden')
+                    fileInput.value = ''
+                    sendFileBtn.disabled = true
+                    fileInput.disabled = false
+                })
+
+                form.addEventListener('submit', async function(e){
+                    e.preventDefault()
                     sendFileBtn.disabled = true
                     const file = fileInput.files[0];
                     const formData = new FormData();
-                    formData.append("userfile", file);
-                    
+
+                    formData.append('file', file);
+                    const res = await fetch(this.action, {
+                        method: 'POST',
+                        body: formData,
+                    });
                 })
             </script>
         }

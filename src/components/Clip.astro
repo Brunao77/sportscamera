@@ -1,10 +1,8 @@
 ---
     const { key, title, inserted_at } = Astro.props
 
-    const dateStr = "Wed Jun 12 2024 20:44:10 GMT-0300 (hora estándar de Argentina)";
     const date = new Date(inserted_at);
 
-    // Formatear la fecha y la hora
     const formattedDate = date.toLocaleString('es-AR', {
         year: 'numeric',
         month: '2-digit',
@@ -24,7 +22,6 @@
 </div>
 <script is:inline define:vars={{ key }}>
     const video = document.getElementById(key)
-    console.log(key)
     video.addEventListener('play', ()=>{
         if (Hls.isSupported()) {
             const hls = new Hls();

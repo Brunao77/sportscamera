@@ -15,7 +15,7 @@ if(user.role !== 'A' && user.role !== 'E'){
     return Astro.redirect("/sign-in");
 }
 
-const pago = user.payment
+const pago = false
 
 const today = new Date();
 let month = new Intl.DateTimeFormat('es-ES', { month: 'long'}).format(today).toUpperCase();
@@ -27,10 +27,10 @@ if (!pago && today.getDate() <= 7) {
 if(Astro.request.method === 'POST'){
 	const formData = await Astro.request.formData()
 	const file = formData.get('file')
+    const buffer = await file.arrayBuffer()
     const { email } = await UserModel.profile({ id: user.id })
-    console.log(file)
 
-    /*const transporter = nodemailer.createTransport({
+    const transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: {
             user: import.meta.env.EMAIL,
@@ -44,15 +44,15 @@ if(Astro.request.method === 'POST'){
         attachments: [
             {
                 filename: file.name,
-                content: fileBuffer,
+                content: Buffer.from(buffer),
                 contentType: file.type
             }
         ]
     };
     transporter.sendMail(mailOptions, (error) => {
         if (error) return error = 'Error al enviar el mensaje'
-        return Astro.redirect('/')
-    });*/
+        return new Response(JSON.stringify({message:"Enviado con éxito"}), { status:200 })
+    });
 }
 ---
 <LayoutEstablishment title="Payment / Sportscamera!">
@@ -69,7 +69,6 @@ if(Astro.request.method === 'POST'){
                 <span class="font-semibold text-xl">Alias: <span class="font-normal text-xl">bruno.munne</span></span>
                 <span class="font-semibold text-xl">Nombre: <span class="font-normal text-xl">Bruno Munne</span></span>
             </div>
-            <p>Enviar comprobante al mail: <strong>sportscamera123@gmail.com</strong></p>
             <form id="form" method="POST" action="/payment" class="w-full flex flex-col items-center gap-2 my-4">
                 <div id="drop_zone" class="w-96 h-72 flex items-center justify-center cursor-pointer text-center flex-col border-2 border-dashed border-gray-400">
                     <input type="file" name="file" id="file_input" style="display:none;"/>
@@ -80,10 +79,11 @@ if(Astro.request.method === 'POST'){
                     <span id='file_name' class="text-primary font-semibold hidden"></span>
                 </div>
                 <div class="flex w-96 justify-end">
-                    <Button type="submit" id="clean_file" >Limpiar</Button>
+                    <Button type="button" id="clean_file" >Limpiar</Button>
                     <Button type="submit" id="send_file">Enviar</Button>
                 </div>
             </form>
+            <span class="text-xs">*Recurda que la habilitación se hará cuando revisemos que el pago es correcto</span>
             <script>
                 const cvu = document.getElementById('cvu').innerText
                 document.getElementById('copy_btn').addEventListener("click", async()=>{
@@ -129,13 +129,13 @@ if(Astro.request.method === 'POST'){
 
                 fileInput.addEventListener('change', e => {
                     const files = e.target.files;
-                    infoDrag.classList.add('hidden')
                     if (files.length > 0) {
                         handleFileUpload(files[0]);
                     }
                 });
 
                 function handleFileUpload(file) {
+                    infoDrag.classList.add('hidden')
                     cleanFile.classList.remove('hidden')
                     sendFileBtn.disabled = false
                     fileName.classList.remove('hidden')
@@ -150,6 +150,9 @@ if(Astro.request.method === 'POST'){
                     infoDrag.classList.remove('hidden')
                     cleanFile.classList.add('hidden')
                     fileName.classList.add('hidden')
+                    dropZone.classList.add('border-gray-400');
+                    dropZone.classList.remove('border-primary');
+                    dropZone.classList.remove('text-primary');
                     fileInput.value = ''
                     sendFileBtn.disabled = true
                     fileInput.disabled = false
@@ -158,9 +161,9 @@ if(Astro.request.method === 'POST'){
                 form.addEventListener('submit', async function(e){
                     e.preventDefault()
                     sendFileBtn.disabled = true
+                    cleanFile.disabled = true
                     const file = fileInput.files[0];
                     const formData = new FormData();
-
                     formData.append('file', file);
                     const res = await fetch(this.action, {
                         method: 'POST',

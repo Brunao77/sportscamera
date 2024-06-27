@@ -50,4 +50,32 @@ export class CameraModel {
       console.log(error);
     }
   }
+  static async update({ field_name, rtsp, rtsp_low, camera_id }) {
+    try {
+      const { rows } = await pool.query(
+        `UPDATE cameras
+        SET field_name = $1, rtsp = $2, rtsp_low = $3
+        WHERE camera_id = $4`,
+        [field_name, rtsp, rtsp_low, camera_id]
+      );
+      return rows;
+    } catch (error) {
+      console.log(error);
+    }
+  }
+  static async delete({ camera_id }) {
+    try {
+      await pool.query(
+        `DELETE FROM videos WHERE camera_id = $1`,
+        [camera_id]
+      );
+      const { rows } = await pool.query(
+        `DELETE FROM cameras WHERE camera_id = $1`,
+        [camera_id]
+      );
+      return rows;
+    } catch (error) {
+      console.log(error);
+    }
+  }
 }

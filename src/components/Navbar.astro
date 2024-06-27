@@ -61,6 +61,14 @@ const establishment = await EstablishmentModel.getById({establishment_id})
                 </a>
             </li>
         }
+        {role === 'A' && 
+        <li>
+            <a class="w-full flex gap-2 hover:bg-[#a262a3] rounded-xl py-3 px-1 text-nowrap items-center" href="/edit">
+                <ClipList />
+                <span>Editar Establecimiento</span>
+            </a>
+        </li>
+    }
     </ul>
     <div class="flex justify-between items-center w-full rounded-xl py-3 px-1 relative">
         <div class="flex rounded-xl py-3 px-1 text-nowrap items-center w-full hover:bg-[#a262a3]">

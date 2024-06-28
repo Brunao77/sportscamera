@@ -45,4 +45,15 @@ export class UserModel {
       console.log(error);
     }
   }
+  static async getUserFromEstablishment({ establishment_id }) {
+    try {
+      const { rows } = await pool.query(
+        "SELECT email FROM users WHERE establishment_id = $1",
+        [establishment_id]
+      );
+      return rows[0];
+    } catch (error) {
+      console.log(error);
+    }
+  }
 }

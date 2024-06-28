@@ -24,10 +24,9 @@ let success = ""
 
 if(Astro.request.method === 'POST'){
 	const formData = await Astro.request.formData()
-	const name = formData.get('name')
     const establishment_id = formData.get('establishment_id')
 
-	if(!name || !establishment_id){
+	if(!establishment_id){
 		error = "Campos requeridos" 
 		return new Response("Campos requeridos", { status:404 })
 	}
@@ -36,79 +35,68 @@ if(Astro.request.method === 'POST'){
 	formData.forEach((value, key) => {
 		const match = key.match(/cameras\[(\d+)\]\[(\w+)\]/);
 		if (match) {
-		const index = match[1];
-		const field = match[2];
+			const index = match[1];
+			const field = match[2];
 
-		if (!camerasData[index]) {
-			camerasData[index] = {};
-		}
-		camerasData[index][field] = value;
+			if (!camerasData[index]) camerasData[index] = {};
+			
+			camerasData[index][field] = value;
 		}
 	});
 
 	for (const cameraData of camerasData) {
-		const { camera_id, field_name, rtsp, rtsp_low, deleted } = cameraData
+		if(!cameraData) continue
+		const { camera_id=null, field_name, rtsp, rtsp_low, deleted=false } = cameraData
         if(camera_id){
-            if(deleted) await CameraModel.delete({ camera_id })
-            await CameraModel.update({ camera_id, field_name, rtsp, rtsp_low })
+            if(deleted) {
+				await CameraModel.delete({ camera_id })
+				continue
+			}
+			await CameraModel.update({ camera_id, field_name, rtsp, rtsp_low })
+			continue
         }
         else{
-		    await CameraModel.insert({ field_name, rtsp, rtsp_low, establishment_id })
+			await CameraModel.insert({ field_name, rtsp, rtsp_low, establishment_id })
+			continue
         }
 	}
 
 	success = "Creación con éxito"
-	return new Response("Creación con éxito", { status:200 })
+	return Astro.redirect('/edit')
 }
 ---
 
 <LayoutEstablishment title="Agregar / SportsCamera!">
 	<section class="bg-white h-full md:rounded-r-xl text-center z-0 w-full md:overflow-hidden">
 		<strong class="font-medium text-2xl md:text-3xl text-primary text-nowrap">Editar Establecimiento</strong>
-        <select id="select_establishment">
-            {establishments && establishments.map(({ establisment_id, name })=>{
-                return <option value={establisment_id}>{name}</option>
-            })}
-        </select>
-		<form method="POST" class="text-start p-3 overflow-hidden" id="form">
-			<div>
-				<strong class="text-primary text-2xl font-medium">Usuario</strong>
-				<div class="flex flex-wrap md:mb-2 justify-between">
-                    <label>
-						ID
-						<Input name="establishment_id" readonly notSvg={true}>
-						</Input>
-					</label>
-					<label>
-						Email
-						<Input placeholder="Email" name="email" type="email" notSvg={false} required>
-							<Email />
-						</Input>
-					</label>
-					<label>
-						Nombre Establecimiento
-						<Input placeholder="Nombre" name="name" type="text" notSvg={false} required>
-							<Establishment />
-						</Input>
-					</label>
+        
+		<form method="POST" class="text-start p-3 overflow-hidden flex flex-col" id="form">
+			<select id="select_establishment" class="border border-primary disabled:border-gray-200 border-2 w-60 outline-none cursor-pointer rounded-lg p-2 focus:ring-primary focus:border-primary overflow-y-scroll">
+				<option hidden value=''>Establecimiento</option>
+				{establishments && establishments.map(({ establishment_id, name })=>{
+					return <option value={establishment_id}>{name}</option>
+				})}
+			</select>
+			<div id="section_cameras" class="hidden">
+				<strong class="text-primary text-2xl font-medium my-2">Cámaras</strong>
+				<input type='hidden' value='' name='establishment_id' id="establishment_id_input">
+				<div id="cameras_container" class="overflow-auto h-fit max-h-[300px] md:max-h-[500px]">
+					<button id="remove_camera_btn" type="button" class="hidden bg-primary rounded-xl text-white font-medium text-xl w-14 py-1">-</button>
+					<button id="add_camera_btn" type="button" class="bg-primary rounded-xl text-white font-medium text-xl w-14 py-1">+</button>
 				</div>
-			</div>
-			<strong class="text-primary text-2xl font-medium my-2">Cámaras</strong>
-			<div id="cameras_container" class="overflow-auto h-fit max-h-[300px] md:max-h-[500px]">
-				<button id="remove_camera_btn" type="button" class="hidden bg-primary rounded-xl text-white font-medium text-xl w-14 py-1">-</button>
-				<button id="add_camera_btn" type="button" class="bg-primary rounded-xl text-white font-medium text-xl w-14 py-1">+</button>
-			</div>
-			<div class="flex md:justify-end w-100 mt-5 gap-5">
-				<Button type="submit" id="save_btn">
-					<span id="content_btn">Guardar</span>
-					<div class='w-6 h-6 border-4 border-ice border-l-transparent rounded-full animate-spin hidden' id="spinner"></div>
-				</Button>
+				<div class="flex md:justify-end w-100 mt-5 gap-5">
+					<Button type="submit" id="save_btn">
+						<span id="content_btn">Guardar</span>
+						<div class='w-6 h-6 border-4 border-ice border-l-transparent rounded-full animate-spin hidden' id="spinner"></div>
+					</Button>
+				</div>
 			</div>
 		</form>
 		{error && <span class="text-red-400">{error}</span>}
 	</section>
 	{success && <Success message={success} redirect="/add" />}
-	<script>
+	<script is:inline define:vars={{establishments}}>
+
 		const form = document.getElementById('form')
 		const saveBtn = document.getElementById('save_btn')
 		const contentBtn = document.getElementById('content_btn')
@@ -117,33 +105,33 @@ if(Astro.request.method === 'POST'){
 		const removeCameraBtn = document.getElementById("remove_camera_btn")
 		const camerasContainer = document.getElementById('cameras_container')
         const selectEstablishment = document.getElementById('select_establishment')
+		const inputEstablishmentId = document.getElementById('establishment_id_input')
+		const sectionCameras = document.getElementById('section_cameras')
+		
 
 		class AddCamera extends HTMLElement {
 			constructor(index, camera = {}) {
 				super();
 				this.innerHTML = `
 				<hr class="md:hidden bg-primary">
-				<div class="flex flex-wrap mb-2 justify-between">
-                    ${camera.camera_id && `<label>
-						Camera id
-						<input placeholder="Cancha" readonly name="cameras[${index}][camera_id]" value="${camera.camera_id}" type="text" required class="bg-white w-full border-primary border-2 outline-0 px-4 py-1 md:py-3 text-black rounded-xl placeholder-terciary disabled:border-primary_disabled"></input>
-					</label>`}
-					<label>
+				<div class="flex flex-wrap mb-2 items-center justify-between ">
+                    ${camera.camera_id ? `<input type='hidden' value=${camera.camera_id} name='cameras[${index}][camera_id]'>` : ''}
+					<label class="flex flex-col">
 						Nombre cancha
 						<input placeholder="Cancha" name="cameras[${index}][field_name]" value="${camera.field_name || ''}" type="text" required class="bg-white w-full border-primary border-2 outline-0 px-4 py-1 md:py-3 text-black rounded-xl placeholder-terciary disabled:border-primary_disabled"></input>
 					</label>
-					<label>
+					<label class="flex flex-col">
 						Rtsp principal
 						<input placeholder="Rtsp principal" name="cameras[${index}][rtsp]" value="${camera.rtsp || ''}" type="text" required class="bg-white w-full border-primary border-2 outline-0 px-4 py-1 md:py-3 text-black rounded-xl placeholder-terciary disabled:border-primary_disabled"></input>
 					</label>
-					<label>
+					<label class="flex flex-col">
 						Rtsp secundario
 						<input placeholder="Rtsp secundario" name="cameras[${index}][rtsp_low]" value="${camera.rtsp_low || ''}" type="text" required class="bg-white w-full border-primary border-2 outline-0 px-4 py-1 md:py-3 text-black rounded-xl placeholder-terciary disabled:border-primary_disabled"></input>
 					</label>
-                     ${camera.camera_id && `<label>
+                     ${camera.camera_id ? `<label class='flex flex-col'>
 						Eliminar
-						<input name="cameras[${index}][deleted]" type="checkbox"></input>
-					</label>`}
+						<input name="cameras[${index}][deleted]" type="checkbox" class="w-10 h-10"></input>
+					</label>` : ''}
 				</div>
 				`;
 			}
@@ -154,10 +142,16 @@ if(Astro.request.method === 'POST'){
 		let cameraIndex = 0;
 
         selectEstablishment.addEventListener('change', async function(){
-            const res = await fetch(`/api/cameras/${this.value}`)
+			sectionCameras.classList.add('hidden')
+			while (camerasContainer.firstChild && camerasContainer.firstChild !== removeCameraBtn) {
+				camerasContainer.removeChild(camerasContainer.firstChild);
+			}
+			inputEstablishmentId.value = this.value
+            const res = await fetch(`/api/camera/${this.value}`)
             const { cameras } = await res.json()
+			sectionCameras.classList.remove('hidden')
             cameras.forEach(({ camera_id, field_name, rtsp, rtsp_low }) => {
-                const addCamera = new AddCamera(cameraIndex, { field_name, rtsp, rtsp_low });
+                const addCamera = new AddCamera(cameraIndex, { camera_id, field_name, rtsp, rtsp_low });
                 cameraIndex++
                 camerasContainer.insertBefore(addCamera, removeCameraBtn);
 			    removeCameraBtn.classList.remove('hidden')
@@ -180,7 +174,7 @@ if(Astro.request.method === 'POST'){
 			}
 		})
 		
-		form.addEventListener('submit', () =>{
+		form.addEventListener('submit', (e) =>{
 			saveBtn.disabled = true
 			contentBtn.style.display = 'none'
 			spinner.classList.remove('hidden')

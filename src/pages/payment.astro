@@ -1,6 +1,5 @@
 ---
 import Button from "../components/Button.astro";
-import Navbar from "../components/Navbar.astro";
 import Copy from "../icons/Copy.astro";
 import LayoutEstablishment from "../layouts/LayoutEstablishment.astro";
 import { UserModel } from "../models/user";
@@ -15,7 +14,7 @@ if(user.role !== 'A' && user.role !== 'E'){
     return Astro.redirect("/sign-in");
 }
 
-const pago = false
+const pago = user.payment
 
 const today = new Date();
 let month = new Intl.DateTimeFormat('es-ES', { month: 'long'}).format(today).toUpperCase();

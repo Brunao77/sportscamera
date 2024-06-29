@@ -56,21 +56,21 @@ if(Astro.request.method === 'POST'){
 }
 ---
 <LayoutEstablishment title="Payment / Sportscamera!">
-    <section class="bg-white w-full  h-full md:rounded-r-xl text-center z-0 ">
+    <section class="bg-white w-full h-full h-full overflow-hidden md:rounded-r-xl text-center z-0">
 		<strong class="font-medium text-2xl md:text-3xl text-primary text-nowrap">Pago suscripción</strong>
-        <div class="p-3">
+        <div class="overflow-auto h-full pb-16">
         {pago ? <h3 class="text-green-300 text-2xl my-3">Usted ha abonado el mes de <strong>{month}</strong></h3>
                 <p>Recordá que el abono se realiza en los primeros 7 días del mes.</p>
         :
-            <h3 class="text-red-500 text-2xl my-3">Usted no ha abonado el mes de <strong>{month}</strong></h3>
+            <h3 class="text-red-500 text-lg">Usted no ha abonado el mes de <strong>{month}</strong></h3>
             <p>Realiza el pago por un monto de <strong class="text-primary">$20.000</strong> a la siguiente cuenta</p>
-            <div class="flex flex-col my-5">
-                <div class="flex items-center text-center justify-center gap-2 text-xl"><span class="font-semibold">CVU: </span><span id="cvu">12345969496396</span><button id="copy_btn"><Copy /></button></div>
-                <span class="font-semibold text-xl">Alias: <span class="font-normal text-xl">bruno.munne</span></span>
-                <span class="font-semibold text-xl">Nombre: <span class="font-normal text-xl">Bruno Munne</span></span>
+            <div class="flex flex-col my-2">
+                <div class="flex items-center text-center justify-center gap-2 text-md"><span class="font-semibold">CVU: </span><span id="cvu">12345969496396</span><button id="copy_btn"><Copy /></button></div>
+                <span class="font-semibold text-md">Alias: <span class="font-normal">bruno.munne</span></span>
+                <span class="font-semibold text-md">Nombre: <span class="font-normal">Bruno Munne</span></span>
             </div>
-            <form id="form" method="POST" action="/payment" class="w-full flex flex-col items-center gap-2 my-4">
-                <div id="drop_zone" class="w-96 h-72 flex items-center justify-center cursor-pointer text-center flex-col border-2 border-dashed border-gray-400">
+            <form id="form" method="POST" action="/payment" class="w-full flex flex-col items-center gap-2">
+                <div id="drop_zone" class="w-96 h-64 flex items-center justify-center cursor-pointer text-center flex-col border-2 border-dashed border-gray-400">
                     <input type="file" name="file" id="file_input" style="display:none;"/>
                     <div id="info_drag">
                         <span class="font-semibold">Envía tu comprobante</span>

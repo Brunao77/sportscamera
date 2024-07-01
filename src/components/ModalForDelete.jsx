@@ -2,27 +2,27 @@ import { convertirFormatoFecha } from "../utils"
 
 export default function ModalForDelete({ listVideos, setListVideos, videoForDelete, setVideoForDelete }) {
     const handleDelete = async () =>{
-        setVideoForDelete(null)
-        const toastSuccess = document.getElementById('toast_success')
+        /*const toastSuccess = document.getElementById('toast_success')
         const toastInfo = document.getElementById('toast_info')
         const spinner = toastSuccess.querySelector('.spinner')
         const tick = toastSuccess.querySelector('.tick')
         toastInfo.innerText = `El video desde ${videoForDelete.start_time}hs está siendo eliminado`
-        toastSuccess.classList.remove('hidden')
+        toastSuccess.classList.remove('hidden')*/
+        setVideoForDelete(null)
+        const updatedList = listVideos.filter(video => video !== videoForDelete);
+        setListVideos(updatedList);
         await fetch('/api/videos', {
             method:'DELETE',
             body: JSON.stringify({video: videoForDelete})
         }).then(async (response)=>{
-            if(response.status === 200){
-                const { start_time } = await response.json()
-                const updatedList = listVideos.filter(video => video !== videoForDelete);
-                setListVideos(updatedList);
-                spinner.classList.add('hidden')
+            if(response.status !== 200){
+                setListVideos(listVideos);
+                /*spinner.classList.add('hidden')
                 tick.classList.remove('hidden')
-                toastInfo.innerText = `El video desde ${start_time}hs ha sido eliminado con éxito`
+                toastInfo.innerText = `El video desde ${videoForDelete.start_time}hs ha sido eliminado con éxito`
                 setTimeout(() => {
                     toastSuccess.classList.add('hidden');
-                }, 5000);
+                }, 5000);*/
             }
         })
     }
